@@ -152,6 +152,13 @@
       opacity: 0.4;
     }
   }
+  --animate-text-gradient: text-gradient 4s linear infinite;
+
+  @keyframes text-gradient {
+    to {
+      background-position: 200% center;
+    }
+  }
 }
 
 ::-webkit-scrollbar {

@@ -7,7 +7,7 @@ import { jwtVerify } from 'jose';
 // Chú ý: Ở Next.js middleware, secret phải được encode thành Uint8Array
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET);
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const token = request.cookies.get('refreshToken')?.value;
   const { pathname } = request.nextUrl;
 
@@ -56,7 +56,7 @@ export async function middleware(request: NextRequest) {
       
       // Xóa luôn cái cookie giả mạo đó và đá về trang login
       const response = NextResponse.redirect(new URL('/login', request.url));
-      response.cookies.delete('refresh_token');
+      response.cookies.delete('refreshToken');
       return response;
     }
   }
@@ -69,6 +69,7 @@ export const config = {
   matcher: [
     '/login',
     '/tests/:path*',
-    '/dashboard/:path*'
+    '/dashboard/:path*',
+    '/tests'
   ],
 };

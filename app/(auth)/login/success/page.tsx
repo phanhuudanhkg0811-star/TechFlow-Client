@@ -22,7 +22,7 @@ function AuthCallbackHandler() {
       // (Tạo cảm giác mượt mà, không bị chớp màn hình)
       setTimeout(() => {
         router.push("/");
-      }, 5000);
+      }, 2000);
     } else {
       // Nếu không có token (lỗi hoặc truy cập bậy), đá về lại trang login
       router.push("/login");
