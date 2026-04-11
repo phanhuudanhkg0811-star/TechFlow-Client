@@ -24,16 +24,11 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
 
   const handleLogout = async () => {
     try {
-      // 1. Gửi request xuống NestJS. 
-      // API client phải bật `withCredentials: true` để nó tự đính kèm cookie gửi đi
       await apiClient.post('/auth/logout');
     } catch (error) {
       console.error("Lỗi khi gọi API đăng xuất:", error);
     } finally {
-      // 2. Dù API thành công hay thất bại, thì cứ phải hủy cái vé tạm thời trên tay đã
       localStorage.removeItem("accessToken");
-      
-      // 3. Đá văng về trang đăng nhập
       router.push("/login");
     }
   }

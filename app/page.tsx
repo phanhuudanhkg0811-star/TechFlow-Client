@@ -22,7 +22,7 @@ export default function Home() {
           Định hình lại tuyển dụng IT với <br className="hidden md:block" />
           {/* Cụm từ Agentic AI với hiệu ứng Animated Gradient */}
           <span className="animate-text-gradient bg-linear-to-r from-cyan-500 via-purple-500 to-cyan-500 bg-size-[200%_auto] bg-clip-text text-transparent">
-            Agentic AI
+            AI TechFlow
           </span>
         </h1>
 

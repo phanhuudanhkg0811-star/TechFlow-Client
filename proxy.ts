@@ -5,7 +5,7 @@ import { jwtVerify } from 'jose';
 
 // Lấy Secret Key y hệt như bên NestJS để giải mã
 // Chú ý: Ở Next.js middleware, secret phải được encode thành Uint8Array
-const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET);
+const JWT_SECRET = new TextEncoder().encode(process.env.REFRESH_TOKEN_SECRET);
 
 export async function proxy(request: NextRequest) {
   const token = request.cookies.get('refreshToken')?.value;
