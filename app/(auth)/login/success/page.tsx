@@ -5,21 +5,17 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { IconLoader2 } from "@tabler/icons-react";
 import { Card, CardContent } from "@/components/ui/card";
 
-// Component con: Chuyên làm nhiệm vụ đọc URL và lưu Token
 function AuthCallbackHandler() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
   useEffect(() => {
-    // Đọc tham số ?token=... từ URL
     const token = searchParams.get("accessToken");
 
     if (token) {
-      // Lưu token vào localStorage để dùng cho các request sau
+      // Lưu token vào localStorage
       localStorage.setItem("accessToken", token);
       
-      // Chờ một chút xíu (khoảng 500ms) để UI load xong rồi mới đá sang trang tests 
-      // (Tạo cảm giác mượt mà, không bị chớp màn hình)
       setTimeout(() => {
         router.push("/");
       }, 2000);

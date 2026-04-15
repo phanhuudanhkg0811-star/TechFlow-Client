@@ -5,10 +5,9 @@ const apiClient = axios.create({
   withCredentials: true,
 });
 
-// THÊM ĐOẠN NÀY ĐỂ TỰ ĐỘNG GẮN TOKEN:
 apiClient.interceptors.request.use(
   (config) => {
-    // Lấy token từ nơi bạn lưu (thường là localStorage)
+    // Lấy token
     const token =
       typeof window !== "undefined"
         ? localStorage.getItem("accessToken")
