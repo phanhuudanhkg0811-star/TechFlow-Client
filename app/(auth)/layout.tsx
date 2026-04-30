@@ -16,7 +16,7 @@ export default function AuthLayout({
         <ArrowLeft className="size-4"/>
         Back
       </Link>
-      <Link href ="/" className="text-xl font-bold flex items-center">AI-TechFlow</Link>
+      <Link href ="/" className="text-xl font-bold flex items-center animate-gradient-reverse">AI-TechFlow</Link>
       <div className="flex w-full max-w-sm flex-col gap-6">{children}</div>
       <div>By clicking sign in, you agree to our <span className="hover:text-primary/80 hover:underline">Terms of service</span></div>
     </div>

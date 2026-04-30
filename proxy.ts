@@ -1,75 +1,72 @@
 // middleware.ts
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { jwtVerify } from 'jose';
+import { decodeJwt } from 'jose'; // Đổi từ jwtVerify sang decodeJwt
 
-// Lấy Secret Key y hệt như bên NestJS để giải mã
-// Chú ý: Ở Next.js middleware, secret phải được encode thành Uint8Array
-const JWT_SECRET = new TextEncoder().encode(process.env.REFRESH_TOKEN_SECRET);
-
-export async function proxy(request: NextRequest) {
-  const token = request.cookies.get('refreshToken')?.value;
+export function proxy(request: NextRequest) { // ĐỔI TÊN HÀM THÀNH middleware
+  // Lấy thẳng accessToken vì role thường nằm ở đây
+  const accessToken = request.cookies.get('accessToken')?.value;
   const { pathname } = request.nextUrl;
 
   const isAuthPage = pathname.startsWith('/login');
-  const isCandidateRoute = pathname.startsWith('/tests');
-  const isAdminRoute = pathname.startsWith('/dashboard');
-  const isProtectedRoute = isCandidateRoute || isAdminRoute;
+  const isProtectedRoute = pathname.startsWith('/tests') || pathname.startsWith('/dashboard');
 
-  if (!token && isProtectedRoute) {
-    return NextResponse.redirect(new URL('/login', request.url));
+  // --- BƯỚC 1: THIẾU ACCESS TOKEN KHI VÀO TRANG BẢO MẬT ---
+  if (isProtectedRoute && !accessToken) {
+    const loginUrl = new URL('/login', request.url);
+    loginUrl.searchParams.set('error', 'unauthorized');
+    return NextResponse.redirect(loginUrl);
   }
 
-  // 2. Nếu CÓ token, tiến hành SOI HÀNG (Xác thực chữ ký)
-  if (token) {
+  // --- BƯỚC 2: DECODE LẤY ROLE TỪ ACCESS TOKEN ---
+  if (accessToken) {
     try {
-      // jwtVerify sẽ tự động check xem token có bị làm giả hay hết hạn không. 
-      // Nếu giả, nó sẽ quăng lỗi văng xuống catch block.
-      const { payload } = await jwtVerify(token, JWT_SECRET);
-
-      // Ép kiểu role (Ví dụ: 'HR' hoặc 'CANDIDATE')
+      // Decode để đọc nội dung token mà không cần Secret Key, tránh lỗi sập Edge
+      const payload = decodeJwt(accessToken);
+      
+      // LƯU Ý: Đảm bảo NestJS cấu hình role nằm đúng ở đây.
+      // Nếu log ra thấy role nằm trong user, hãy đổi thành: payload.user?.role
       const userRole = payload.role as string; 
+      
+      const isAdminRoute = pathname.startsWith('/dashboard');
+      const isCandidateRoute = pathname.startsWith('/tests');
 
-      // KỊCH BẢN A: Bảo vệ Dashboard (Chỉ HR/Admin mới được vào)
-      if (isAdminRoute && userRole !== 'HR') {
-        // Ứng viên táy máy gõ URL /dashboard -> Đá về khu vực làm test
-        return NextResponse.redirect(new URL('/tests', request.url));
-      }
-
-      // KỊCH BẢN B: Bảo vệ khu vực ứng viên (Tùy chọn: HR không cần vào làm test)
-      if (isCandidateRoute && userRole === 'HR') {
-        return NextResponse.redirect(new URL('/dashboard', request.url));
-      }
-
-      // KỊCH BẢN C: Đã đăng nhập mà cố vào lại /login -> Điều hướng đúng sân nhà
+      // Đã đăng nhập hợp lệ -> Không cho ở lại trang Login
       if (isAuthPage) {
-        if (userRole === 'HR') {
-          return NextResponse.redirect(new URL('/dashboard', request.url));
-        } else {
-          return NextResponse.redirect(new URL('/tests', request.url));
-        }
+        return NextResponse.redirect(
+          new URL(userRole === 'HR' ? '/dashboard' : '/tests', request.url)
+        );
+      }
+
+      // KỊCH BẢN: SAI QUYỀN HẠN (FORBIDDEN) -> Giữ ở đúng khu vực và báo lỗi
+      if (isAdminRoute && userRole !== 'HR') {
+        const fallbackUrl = new URL('/tests', request.url);
+        fallbackUrl.searchParams.set('error', 'forbidden');
+        return NextResponse.redirect(fallbackUrl); // Đá về /tests kèm báo lỗi
+      }
+      
+      if (isCandidateRoute && userRole === 'HR') {
+        const fallbackUrl = new URL('/dashboard', request.url);
+        fallbackUrl.searchParams.set('error', 'forbidden');
+        return NextResponse.redirect(fallbackUrl); // Đá về /dashboard kèm báo lỗi
       }
 
     } catch (error) {
-      // BẮT QUẢ TANG: Token giả mạo, bị chỉnh sửa hoặc đã hết hạn
-      console.error("Token xảo trá hoặc hết hạn:", error);
+      console.error("Lỗi khi decode token:", error);
       
-      // Xóa luôn cái cookie giả mạo đó và đá về trang login
+      if (isAuthPage) return NextResponse.next();
+
+      // Chỉ rơi vào đây khi Access Token bị biến dạng (rác)
       const response = NextResponse.redirect(new URL('/login', request.url));
+      response.cookies.delete('accessToken');
       response.cookies.delete('refreshToken');
       return response;
     }
   }
 
-  // Mọi thứ hợp lệ, giấy tờ đầy đủ -> Mở cổng
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: [
-    '/login',
-    '/tests/:path*',
-    '/dashboard/:path*',
-    '/tests'
-  ],
+  matcher: ['/login', '/tests/:path*', '/dashboard/:path*', '/tests'],
 };

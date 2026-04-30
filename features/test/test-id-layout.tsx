@@ -2,6 +2,7 @@
 
 import { Allotment } from "allotment";
 import { Navbar } from "./nav-bar";
+import "allotment/dist/style.css";
 import { ConversationSidebar } from "../conversation/conversation-side-bar";
 
 // import { ConversationSidebar } from "@/features/conversations/components/conversation-sidebar";
@@ -33,6 +34,7 @@ export default function TestIdLayout({
             preferredSize={DEFAULT_CONVERSATION_SIDEBAR_WIDTH}
           >
             <ConversationSidebar testId={testId} />
+            {/* <div>Conversation Sidebar</div> */}
           </Allotment.Pane>
           <Allotment.Pane>{children}</Allotment.Pane>
         </Allotment>

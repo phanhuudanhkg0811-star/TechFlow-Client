@@ -15,7 +15,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -60,7 +59,6 @@ import {
   IconPlus,
   IconMail,
   IconBriefcase,
-  IconExternalLink,
   IconClock,
   IconTrash,
   IconPencil,
@@ -68,6 +66,8 @@ import {
 } from "@tabler/icons-react";
 
 import apiClient from "@/lib/apiClient";
+import Link from "next/link";
+import TriggerPipelineButton from "@/features/dashboard-detail/components/trigger-button";
 
 enum DifficultyEnum {
   INTERN = "Intern",
@@ -120,7 +120,7 @@ export default function JobsManagement() {
     try {
       setIsLoading(true);
       const res = await apiClient.get("/dashboard/my-jobs?page=1&limit=50");
-      const dataArray = res.data?.data?.items || [];
+      const dataArray = res.data?.items || [];
       setJobs(dataArray);
     } catch (error) {
       console.error("Lỗi lấy danh sách chiến dịch:", error);
@@ -171,7 +171,7 @@ export default function JobsManagement() {
 
       if (editingId) {
         // Gọi API cập nhật (giả sử endpoint là PUT /jobs/:id)
-        await apiClient.put(`/jobs/${editingId}`, payload);
+        await apiClient.patch(`/jobs/${editingId}`, payload);
         toast.success("Cập nhật chiến dịch thành công!");
       } else {
         // Tạo mới
@@ -195,7 +195,7 @@ export default function JobsManagement() {
         toast.error("Vui lòng kiểm tra lại thông tin nhập vào");
       } else {
         toast.error(
-          error.response?.data?.message || "Có lỗi xảy ra khi lưu chiến dịch"
+          error.response?.data?.message || "Có lỗi xảy ra khi lưu chiến dịch",
         );
       }
     } finally {
@@ -233,9 +233,14 @@ export default function JobsManagement() {
           </p>
         </div>
 
-        <Button onClick={handleOpenCreate} className="gap-2">
-          <IconPlus size={18} /> Tạo Job mới
-        </Button>
+        <div className="flex items-center gap-3">
+          {/* Nút Trigger Pipeline mới thêm */}
+          <TriggerPipelineButton />
+
+          <Button onClick={handleOpenCreate} className="gap-2">
+            <IconPlus size={18} /> Tạo Job mới
+          </Button>
+        </div>
       </div>
 
       {/* Dialog Tạo/Sửa */}
@@ -543,13 +548,14 @@ export default function JobsManagement() {
                           variant="outline"
                           size="sm"
                           className="flex-1 gap-1"
-                          onClick={() => {
-                            /* TODO: Điều hướng tới trang quản lý ứng viên */
-                            toast.info("Tính năng đang phát triển");
-                          }}
+                          asChild // Thêm asChild
                         >
-                          <IconUsers size={16} />
-                          Ứng viên
+                          <Link href={`/dashboard/jobs/${job.id}/candidates`}>
+                            {" "}
+                            {/* Sửa thành Link */}
+                            <IconUsers size={16} />
+                            Ứng viên
+                          </Link>
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent>Xem danh sách ứng viên</TooltipContent>

@@ -1,16 +1,16 @@
+// file: features/test/test-id-view.tsx
 "use client";
 
 import { useState } from "react";
 import { Allotment } from "allotment";
 
 import { cn } from "@/lib/utils";
-import { ExportPopover } from "./export-popover";
-// import { EditorView } from "@/features/editor/components/editor-view";
+import { FileExplorer } from "./file-explorer/file-explorer";
+import { EditorView } from "../editor/components/editor-view";
 
-// // import { FileExplorer } from "./file-explorer";
-// // import { Id } from "../../../../convex/_generated/dataModel";
-// import { PreviewView } from "./preview-view";
-// import { ExportPopover } from "./export-popover";
+// 🟢 NHÚNG COMPONENT TERMINAL VÀ PREVIEW VÀO ĐÂY
+import { Terminal } from "../editor/components/terminal";
+import { Preview } from "../editor/components/preview";
 
 const MIN_SIDEBAR_WIDTH = 200;
 const MAX_SIDEBAR_WIDTH = 800;
@@ -30,8 +30,8 @@ const Tab = ({
     <div
       onClick={onClick}
       className={cn(
-        "flex items-center gap-2 h-full px-3 cursor-pointer text-muted-foreground border-r hover:bg-accent/30",
-        isActive && "bg-background text-foreground",
+        "flex items-center gap-2 h-full px-4 font-medium cursor-pointer text-muted-foreground border-r hover:bg-accent/30 transition-colors",
+        isActive && "bg-background text-foreground border-b-2 border-b-indigo-500",
       )}
     >
       <span className="text-sm">{label}</span>
@@ -44,22 +44,24 @@ export default function TestIdView({ testId }: { testId: string }) {
 
   return (
     <div className="h-full flex flex-col">
-      <nav className="h-8.75 flex items-center bg-sidebar border-b">
+      {/* THANH ĐIỀU HƯỚNG TAB */}
+      <nav className="h-9 flex items-center bg-sidebar border-b shrink-0">
         <Tab
-          label="Code"
+          label="Code & Terminal"
           isActive={activeView === "editor"}
           onClick={() => setActiveView("editor")}
         />
         <Tab
-          label="Preview"
+          label="Browser Preview"
           isActive={activeView === "preview"}
           onClick={() => setActiveView("preview")}
         />
-        <div className="flex-1 flex justify-end h-full">
-          <ExportPopover testId={testId} />
-        </div>
       </nav>
-      <div className="flex-1 relative">
+
+      {/* KHU VỰC HIỂN THỊ CHÍNH */}
+      <div className="flex-1 relative min-h-0">
+        
+        {/* --- VIEW 1: EDITOR + TERMINAL --- */}
         <div
           className={cn(
             "absolute inset-0",
@@ -73,25 +75,35 @@ export default function TestIdView({ testId }: { testId: string }) {
               maxSize={MAX_SIDEBAR_WIDTH}
               preferredSize={DEFAULT_SIDEBAR_WIDTH}
             >
-              {/* <FileExplorer projectId={projectId} /> */}
-              <div>File Explorer here</div>
+              <FileExplorer testId={testId} />
             </Allotment.Pane>
+
             <Allotment.Pane>
-              {/* <EditorView testId={testId} /> */}
-              <div>Editor View</div>
+              {/* 🟢 Dùng Allotment Vertical để chia Editor (trên) và Terminal (dưới) */}
+              <Allotment vertical defaultSizes={[700, 300]}>
+                <Allotment.Pane>
+                  <EditorView testId={testId} />
+                </Allotment.Pane>
+                
+                <Allotment.Pane snap minSize={150}>
+                  <Terminal testId={testId}/>
+                </Allotment.Pane>
+              </Allotment>
             </Allotment.Pane>
           </Allotment>
         </div>
+
+        {/* --- VIEW 2: PREVIEW BROWSER --- */}
         <div
           className={cn(
-            "absolute inset-0",
+            "absolute inset-0 bg-slate-50",
             activeView === "preview" ? "visible" : "invisible",
           )}
         >
-          {/* <PreviewView testId={ testId} /> */}
-          <div>Preview View</div>
+          <Preview />
         </div>
+
       </div>
     </div>
   );
-};
+}

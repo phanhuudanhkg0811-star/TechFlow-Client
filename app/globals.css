@@ -55,15 +55,15 @@
   --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
-  
+
   /* Đã sửa thành xám nhạt (Light Gray) thay vì xanh đen đậm */
-  --muted: oklch(0.96 0 0); 
+  --muted: oklch(0.96 0 0);
   --muted-foreground: oklch(0.556 0 0);
-  
+
   /* Đã sửa thành xám nhạt (Light Gray) */
-  --accent: oklch(0.96 0 0); 
+  --accent: oklch(0.96 0 0);
   --accent-foreground: oklch(0.205 0 0);
-  
+
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.922 0 0);
   --separator-border: oklch(1 0 0 / 10%);
@@ -74,9 +74,9 @@
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
-  
+
   /* Đã sửa Sidebar cho khớp với nền sáng */
-  --sidebar: oklch(0.98 0 0); 
+  --sidebar: oklch(0.98 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.205 0 0);
   --sidebar-primary-foreground: oklch(0.985 0 0);
@@ -171,4 +171,73 @@
 
 ::-webkit-scrollbar-thumb {
   @apply rounded-full bg-border border-[1px] border-transparent border-solid bg-clip-padding;
+}
+
+/* ===== GRADIENT TEXT ANIMATION ===== */
+@keyframes gradient-shift-reverse {
+  0% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* ===== GRADIENT TEXT ANIMATION (MƯỢT MÀ) ===== */
+@keyframes gradient-shift-reverse {
+  0% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.animate-gradient-reverse {
+  /* Nhân đôi dải màu sao cho nửa đầu (0-50%) và nửa sau (50-100%) y hệt nhau */
+  background-image: linear-gradient(
+    to right,
+    #075985 0%,    /* Sky 800 (Xanh biển đậm) */
+    #0ea5e9 12.5%, /* Sky 500 (Xanh trời) */
+    #22d3ee 25%,   /* Cyan 400 (Xanh ngọc nhạt) */
+    #0ea5e9 37.5%, 
+    #075985 50%,   
+    #0ea5e9 62.5%, 
+    #22d3ee 75%,   
+    #0ea5e9 87.5%, 
+    #075985 100%
+  );
+
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  animation: gradient-shift-reverse 5s linear infinite;
+  display: inline-block;
+}
+
+.dark .animate-gradient-reverse {
+  /* Tương tự cho Dark Mode */
+  background-image: linear-gradient(
+    to right,
+    #38bdf8 0%,    /* Sky 400 (Xanh sáng) */
+    #7dd3fc 12.5%, /* Sky 300 */
+    #a5e6f1 25%,   /* Cyan 200 (Gần như trắng xanh) */
+    #7dd3fc 37.5%, 
+    #38bdf8 50%,   
+    #7dd3fc 62.5%, 
+    #a5e6f1 75%,   
+    #7dd3fc 87.5%, 
+    #38bdf8 100%
+  );
+}
+
+@keyframes gradient-shift-reverse {
+  0% {
+    background-position: 100% center;
+  }
+  100% {
+    background-position: 0% center;
+  }
 }

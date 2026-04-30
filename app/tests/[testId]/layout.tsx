@@ -5,17 +5,11 @@ const Layout = async ({
   params,
 }: {
   children: React.ReactNode;
-  params: Promise<{ testId: string }>
+  params: Promise<{ testId: string }>;
 }) => {
   const { testId } = await params;
 
-  return (
-    <TestIdLayout 
-      testId={testId}
-    >
-      {children}
-    </TestIdLayout>
-  );
-}
- 
+  return <TestIdLayout testId={testId}>{children}</TestIdLayout>;
+};
+
 export default Layout;

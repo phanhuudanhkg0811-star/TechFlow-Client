@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import { Inter, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
+import { Toaster } from "sonner";
+import { RoleErrorHandler } from "@/components/global-error";
+import { Suspense } from "react";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -39,6 +42,11 @@ export default function RootLayout({
         >
           {children}
         </ThemeProvider>
+        <Toaster position="bottom-right" richColors closeButton />
+        {/* Bọc Suspense cho component có dùng useSearchParams */}
+        <Suspense fallback={null}>
+          <RoleErrorHandler />
+        </Suspense>
       </body>
     </html>
   );
