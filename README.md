@@ -1,36 +1,69 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+<div align="center">
+  <img src="https://raw.githubusercontent.com/lucide-react/lucide/main/icons/bot.svg" width="80" height="80" />
+  <h1>🖥️ AI-TechFlow Frontend</h1>
+  <p><b>Next-Gen Web-IDE & Recruitment Dashboard</b></p>
 
-## Getting Started
+  <p>
+    <img src="https://img.shields.io/badge/Framework-Next.js_15_(App_Router)-black?style=flat-square&logo=next.js" />
+    <img src="https://img.shields.io/badge/Language-TypeScript-blue?style=flat-square&logo=typescript" />
+    <img src="https://img.shields.io/badge/Editor-CodeMirror_6-FF4081?style=flat-square" />
+    <img src="https://img.shields.io/badge/Runtime-WebContainers-000000?style=flat-square" />
+    <img src="https://img.shields.io/badge/Styling-Tailwind_CSS-06B6D4?style=flat-square&logo=tailwind-css" />
+  </p>
 
-First, run the development server:
+  <p><i>Phần giao diện người dùng của hệ thống tuyển dụng AI-TechFlow, tích hợp môi trường lập trình trực tuyến và bảng điều khiển phân tích ứng viên.</i></p>
+</div>
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+---
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🚀 Tổng quan module Frontend
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Frontend của AI-TechFlow không chỉ là các trang web tĩnh mà là một **Single Page Application (SPA)** phức tạp với khả năng giả lập môi trường hệ điều hành ngay trên trình duyệt.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 🧩 Các Module Chính
 
-## Learn More
+1.  **Web-IDE Engine (`/features/editor`)**:
+    * Sử dụng **WebContainers API** để chạy Node.js runtime trong trình duyệt.
+    * **Terminal (`XTerm.js`)**: Kết nối trực tiếp với shell của WebContainer, hỗ trợ paste và resize linh hoạt.
+    * **Browser Preview**: Iframe hiển thị kết quả thời gian thực của ứng dụng (hỗ trợ hot-reload).
 
-To learn more about Next.js, take a look at the following resources:
+2.  **Smart Editor Core (`/features/editor/components/code-editor.tsx`)**:
+    * Dựa trên **CodeMirror 6** với kiến trúc extension.
+    * **AI Suggestion**: Ghost text tự động hiện ra khi gõ (tương tự Copilot).
+    * **Quick Edit (Cmd+K)**: Bôi đen code và ra lệnh cho AI chỉnh sửa trực tiếp.
+    * **Minimap & Indent Markers**: Tối ưu trải nghiệm lập trình chuyên nghiệp.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+3.  **AI Chat Sidebar (`/features/conversation`)**:
+    * Hỗ trợ Markdown rendering cực đẹp với `react-markdown`.
+    * **Context-Aware**: Cho phép ứng viên đính kèm tệp/thư mục làm ngữ cảnh cho câu hỏi.
+    * **One-click Apply**: AI trả về code block kèm nút "Apply", nhấn vào sẽ tự động ghi đè code vào file tương ứng.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+4.  **HR Dashboard (`/app/dashboard`)**:
+    * Bảng xếp hạng ứng viên dựa trên điểm số AI.
+    * Trình xem chi tiết hồ sơ: So sánh nội dung CV, phân tích Github và xem lại mã nguồn bài làm của ứng viên.
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 🛠 Công nghệ sử dụng
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+* **Core:** Next.js 15, React 19, TypeScript.
+* **State Management:** `Zustand` (Quản lý File System local, Tab Editor và Chat Context).
+* **Communication:** `Axios` với interceptors tự động xử lý xoay vòng JWT (Access/Refresh Token).
+* **UI Components:** `Shadcn/ui`, `Framer Motion` (Animation), `Lucide` & `Tabler Icons`.
+* **Layout:** `Allotment` (Tạo các panel có thể kéo dãn kích thước như VS Code).
+
+---
+
+## 📂 Cấu trúc thư mục
+
+```text
+src/
+├── app/                  # Next.js App Router (Auth, Dashboard, Tests)
+├── components/           # UI Components dùng chung (Button, Input, etc.)
+├── features/             # Các tính năng nghiệp vụ lớn
+│   ├── editor/           # Logic WebContainer, CodeMirror, Terminal
+│   ├── conversation/     # Chatbot, Lịch sử hội thoại, Context Store
+│   ├── test/             # File Explorer, Đếm ngược thời gian, Nộp bài
+│   └── dashboard-detail/ # Các Dialog phân tích sâu ứng viên
+├── lib/                  # Cấu hình API Client, Utils
+└── store/                # Global states (Zustand)
