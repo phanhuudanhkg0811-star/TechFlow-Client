@@ -13,7 +13,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { useLocalFiles } from "@/features/test/hooks/use-local-files";
 import { Tree } from "./tree";
 import { CreateInput } from "./create-input";
-// IMPORT: Thêm hook useEditor để kết nối với Zustand
+
 import { useEditor } from "../../editor/hooks/use-editor";
 
 export const FileExplorer = ({ testId }: { testId: string }) => {
@@ -134,7 +134,7 @@ export const FileExplorer = ({ testId }: { testId: string }) => {
                     item={item}
                     level={0}
                     files={files}
-                    testId={testId} // <--- THÊM DÒNG NÀY ĐỂ TRÁNH LỖI TYPESCRIPT
+                    testId={testId}
                     handlers={handlers}
                   />
                 ))}

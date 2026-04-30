@@ -5,8 +5,6 @@ import { Navbar } from "./nav-bar";
 import "allotment/dist/style.css";
 import { ConversationSidebar } from "../conversation/conversation-side-bar";
 
-// import { ConversationSidebar } from "@/features/conversations/components/conversation-sidebar";
-
 const MIN_SIDEBAR_WIDTH = 200;
 const MAX_SIDEBAR_WIDTH = 800;
 const DEFAULT_CONVERSATION_SIDEBAR_WIDTH = 400;
@@ -34,7 +32,6 @@ export default function TestIdLayout({
             preferredSize={DEFAULT_CONVERSATION_SIDEBAR_WIDTH}
           >
             <ConversationSidebar testId={testId} />
-            {/* <div>Conversation Sidebar</div> */}
           </Allotment.Pane>
           <Allotment.Pane>{children}</Allotment.Pane>
         </Allotment>

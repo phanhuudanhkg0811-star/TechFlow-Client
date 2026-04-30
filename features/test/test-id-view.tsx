@@ -8,7 +8,6 @@ import { cn } from "@/lib/utils";
 import { FileExplorer } from "./file-explorer/file-explorer";
 import { EditorView } from "../editor/components/editor-view";
 
-// 🟢 NHÚNG COMPONENT TERMINAL VÀ PREVIEW VÀO ĐÂY
 import { Terminal } from "../editor/components/terminal";
 import { Preview } from "../editor/components/preview";
 
@@ -79,7 +78,7 @@ export default function TestIdView({ testId }: { testId: string }) {
             </Allotment.Pane>
 
             <Allotment.Pane>
-              {/* 🟢 Dùng Allotment Vertical để chia Editor (trên) và Terminal (dưới) */}
+              {/* Dùng Allotment Vertical để chia Editor (trên) và Terminal (dưới) */}
               <Allotment vertical defaultSizes={[700, 300]}>
                 <Allotment.Pane>
                   <EditorView testId={testId} />

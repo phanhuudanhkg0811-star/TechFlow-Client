@@ -8,14 +8,13 @@ import { RenameInput } from "./rename-input";
 import { FileNode } from "@/features/test/hooks/use-local-files";
 import { TreeItemWrapper } from "./tree-item-wrapper";
 
-// 🟢 Đảm bảo đường dẫn tuyệt đối chuẩn xác
 import { useChatContextStore } from "@/features/conversation/hooks/use-chat-context-store";
 
 interface TreeProps {
   item: FileNode;
   level?: number;
   files: FileNode[];
-  testId: string; // <-- BẮT BUỘC THÊM ĐỂ QUẢN LÝ CONTEXT STORE
+  testId: string; // QUẢN LÝ CONTEXT STORE
   handlers: {
     createNode: (
       name: string,
@@ -30,7 +29,7 @@ interface TreeProps {
   };
 }
 
-// 🟢 ĐÃ SỬA: Kiểu dữ liệu phải là mảng string[] để chứa các ID
+// Kiểu dữ liệu phải là mảng string[] để chứa các ID
 const EMPTY_CONTEXT: string[] = [];
 
 export const Tree = ({

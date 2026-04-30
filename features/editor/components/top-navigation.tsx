@@ -8,7 +8,7 @@ import { useLocalFiles } from "@/features/test/hooks/use-local-files";
 const Tab = ({
   fileId,
   isFirst,
-  testId, // Đổi từ projectId thành testId
+  testId, 
 }: {
   fileId: string;
   isFirst: boolean;
@@ -18,7 +18,6 @@ const Tab = ({
   const { activeTabId, previewTabId, setActiveTab, openFile, closeTab } =
     useEditor(testId);
 
-  // Tìm thông tin file trong mảng local thay vì gọi hook Convex
   const file = files.find((f) => f.id === fileId);
 
   const isActive = activeTabId === fileId;

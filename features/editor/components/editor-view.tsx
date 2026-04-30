@@ -2,7 +2,7 @@ import Image from "next/image";
 import { useEffect, useRef } from "react";
 import { useEditor } from "../hooks/use-editor";
 import { TopNavigation } from "./top-navigation";
-// import { FileBreadcrumbs } from "./file-breadcrumbs"; // Bạn có thể update file này sau tương tự
+
 import { useLocalFiles } from "@/features/test/hooks/use-local-files";
 import { CodeEditor } from "./code-editor";
 
@@ -29,7 +29,6 @@ export const EditorView = ({ testId }: { testId: string }) => {
         <TopNavigation testId={testId} />
       </div>
       
-      {/* {activeTabId && <FileBreadcrumbs testId={testId} />} */}
 
       <div className="flex-1 min-h-0 bg-background">
         {!activeFile ? (

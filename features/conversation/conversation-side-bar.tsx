@@ -34,14 +34,13 @@ import { PastConversationsDialog } from "./past-conversation";
 import { useLocalFiles, FileNode } from "@/features/test/hooks/use-local-files";
 import { useEditor } from "@/features/editor/hooks/use-editor";
 
-// 🟢 ĐÃ SỬA: Dùng đường dẫn tuyệt đối
 import { useChatContextStore } from "@/features/conversation/hooks/use-chat-context-store";
 
 interface ConversationSidebarProps {
   testId: string;
 }
 
-// 🟢 ĐÃ SỬA: Đưa biến này ra NGOÀI component và đổi thành string[] để không bị re-render vô tận
+// Đưa biến này ra NGOÀI component và đổi thành string[] để không bị re-render vô tận
 const EMPTY_CONTEXT: string[] = [];
 
 export const ConversationSidebar = ({ testId }: ConversationSidebarProps) => {
@@ -53,7 +52,7 @@ export const ConversationSidebar = ({ testId }: ConversationSidebarProps) => {
   const [pastConversationsOpen, setPastConversationsOpen] = useState(false);
   const [showContextMenu, setShowContextMenu] = useState(false);
 
-  // 🟢 ĐÃ SỬA: Gọi Store an toàn
+  // Gọi Store an toàn
   const selectedContextIds = useChatContextStore(
     (state) => state.selectedContextIds[testId] || EMPTY_CONTEXT,
   );

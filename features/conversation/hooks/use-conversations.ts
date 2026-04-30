@@ -21,7 +21,6 @@ export type Message = {
 
 // ============================================================================
 // CUSTOM HOOKS
-// LƯU Ý: Các đường dẫn API (VD: /conversations) cần khớp với Route bên NestJS
 // ============================================================================
 
 export const useConversation = (id: string | null) => {

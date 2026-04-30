@@ -5,14 +5,12 @@ import { Button } from "@/components/ui/button";
 import apiClient from "@/lib/apiClient";
 import { toast } from "sonner";
 
-// Định nghĩa Component Nút Trigger
 export default function TriggerPipelineButton() {
   const [isTriggering, setIsTriggering] = useState(false);
 
   const handleTrigger = async () => {
     try {
       setIsTriggering(true);
-      // Gọi đúng endpoint /ai/trigger-pipeline mà chúng ta vừa sửa ở Backend
       const res = await apiClient.post('/ai/trigger-pipeline');
       
       toast.success(res.data?.message || "Đã ra lệnh quét hòm thư!");

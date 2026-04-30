@@ -6,7 +6,6 @@ import { oneDark } from "@codemirror/theme-one-dark";
 import { indentWithTab } from "@codemirror/commands";
 import { indentationMarkers } from "@replit/codemirror-indentation-markers";
 
-// Đảm bảo các đường dẫn này trỏ đúng vào folder extensions của bạn
 import { minimap } from "@/features/editor/extensions/minimap";
 import { customTheme } from "@/features/editor/extensions/theme";
 import { getLanguageExtension } from "@/features/editor/extensions/language-extension";
