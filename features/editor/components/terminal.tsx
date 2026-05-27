@@ -8,7 +8,7 @@ import { FitAddon } from "@xterm/addon-fit";
 import "@xterm/xterm/css/xterm.css";
 import { ClipboardAddon } from '@xterm/addon-clipboard';
 import { getWebContainer } from "../hooks/use-webcontainer";
-import { useLocalFiles } from "@/features/test/hooks/use-local-files"; 
+import { useLocalFiles, FileNode } from "@/features/test/hooks/use-local-files";
 import { transformToWebContainerFiles } from "../lib/webcontainer-utils";
 
 export const Terminal = ({ testId }: { testId: string }) => {
@@ -92,16 +92,49 @@ export const Terminal = ({ testId }: { testId: string }) => {
     };
   }, [testId, isLoaded]);
 
+  // Thêm ref này để lưu lại trạng thái file trước đó
+  const prevFilesRef = useRef<FileNode[]>([]);
+
   useEffect(() => {
     const syncFiles = async () => {
       if (!isMountedRef.current) return;
       const wc = await getWebContainer();
+
+      // Hàm đệ quy để tìm đường dẫn đầy đủ của file (ví dụ: src/components/Button.jsx)
+      const getFullPath = (fileId: string, allFiles: FileNode[]): string => {
+        const file = allFiles.find((f) => f.id === fileId);
+        if (!file) return "";
+        if (!file.parentId) return file.name;
+        return `${getFullPath(file.parentId, allFiles)}/${file.name}`;
+      };
+
       for (const node of files) {
         if (node.type === "file") {
-          await wc.fs.writeFile(node.name, node.content || "");
+          // Tìm file cũ để so sánh
+          const oldFile = prevFilesRef.current.find(f => f.id === node.id);
+
+          // CHỈ ghi vào WebContainer nếu file mới tạo hoặc nội dung bị thay đổi
+          if (!oldFile || oldFile.content !== node.content) {
+            const fullPath = getFullPath(node.id, files);
+            try {
+              // Phân tích lấy thư mục cha
+              const dirPath = fullPath.substring(0, fullPath.lastIndexOf('/'));
+              if (dirPath) {
+                // Tạo thư mục nếu chưa tồn tại (tránh lỗi ENOENT)
+                try { await wc.fs.mkdir(dirPath, { recursive: true }); } catch (e) {}
+              }
+              // Ghi file vào đúng vị trí
+              await wc.fs.writeFile(fullPath, node.content || "");
+            } catch (err) {
+              console.error(`Lỗi đồng bộ file ${fullPath}:`, err);
+            }
+          }
         }
       }
+      // Cập nhật lại lịch sử file
+      prevFilesRef.current = files;
     };
+    
     syncFiles();
   }, [files]);
 

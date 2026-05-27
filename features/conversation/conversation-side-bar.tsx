@@ -246,13 +246,13 @@ export const ConversationSidebar = ({ testId }: ConversationSidebarProps) => {
                   msg.role === "user" ? "ml-auto flex-row-reverse" : "mr-auto",
                 )}
               >
+                {/* 1. ĐÃ SỬA ICON: Đưa về size cố định (size-9), xóa w-full và xóa các class text wrap */}
                 <div
                   className={cn(
-                    // Thêm whitespace-pre-wrap, break-words và max-w-full vào đây
-                    "px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap break-words max-w-full",
+                    "flex items-center justify-center size-9 shrink-0 rounded-full",
                     msg.role === "user"
-                      ? "bg-primary text-primary-foreground rounded-2xl rounded-tr-sm ml-auto" // ĐÃ XÓA w-max
-                      : "bg-muted/50 border border-border/50 text-foreground rounded-2xl rounded-tl-sm w-full",
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-indigo-500/10 text-indigo-500 border border-indigo-500/20",
                   )}
                 >
                   {msg.role === "user" ? (
@@ -262,12 +262,15 @@ export const ConversationSidebar = ({ testId }: ConversationSidebarProps) => {
                   )}
                 </div>
 
-                <div className="flex flex-col gap-1 w-full max-w-[90%]">
+                {/* 2. ĐÃ SỬA TIN NHẮN: Thêm min-w-0 để chống tràn flexbox */}
+                <div className="flex flex-col gap-1 w-full max-w-[85%] min-w-0">
                   <div
                     className={cn(
-                      "px-4 py-2.5 text-sm leading-relaxed",
+                      // Chuyển break-words và whitespace-pre-wrap xuống đúng chỗ này
+                      "px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap break-words",
                       msg.role === "user"
-                        ? "bg-primary text-primary-foreground rounded-2xl rounded-tr-sm w-max ml-auto"
+                        // Đổi w-max thành w-fit và thêm max-w-full để tự động xuống dòng
+                        ? "bg-primary text-primary-foreground rounded-2xl rounded-tr-sm w-fit max-w-full ml-auto"
                         : "bg-muted/50 border border-border/50 text-foreground rounded-2xl rounded-tl-sm w-full",
                     )}
                   >
@@ -294,7 +297,6 @@ export const ConversationSidebar = ({ testId }: ConversationSidebarProps) => {
                               if (isBlock) {
                                 const firstLine = codeString.split("\n")[0];
 
-                                // Tinh chỉnh Regex: Chấp nhận có hoặc không có dấu cách, bắt linh hoạt hơn
                                 const fileMatch = firstLine.match(
                                   /\/\/\s*file:\s*([^\s]+)/i,
                                 );
@@ -302,26 +304,22 @@ export const ConversationSidebar = ({ testId }: ConversationSidebarProps) => {
                                   ? fileMatch[1].trim()
                                   : null;
 
-                                // Bỏ đi dòng "// file: ..." để code render ra nhìn sạch sẽ hơn
                                 const cleanCodeString = targetFileName
-                                  ? codeString.replace(/^.*\n/, "") // Xóa dòng đầu tiên
+                                  ? codeString.replace(/^.*\n/, "")
                                   : codeString;
 
                                 return (
                                   <div className="relative group my-4 rounded-md overflow-hidden bg-[#1e1e2e] border border-slate-700">
                                     <div className="flex items-center justify-between px-3 py-1.5 bg-[#11111b] border-b border-slate-700">
                                       <span className="text-[11px] font-mono text-slate-400 font-bold uppercase">
-                                        {/* Ưu tiên hiện tên file, nếu không có mới hiện ngôn ngữ (ts, js...) */}
                                         {targetFileName
                                           ? targetFileName
                                           : match[1]}
                                       </span>
 
-                                      {/* ... Các nút Copy, Apply, Chèn giữ nguyên ... */}
                                       <div className="flex items-center gap-1">
                                         {targetFileName && (
                                           <button
-                                            // Xài cleanCodeString để khi Apply không bị in dư dòng comment // file: ...
                                             onClick={() =>
                                               handleApplyToFile(
                                                 targetFileName,
@@ -334,7 +332,6 @@ export const ConversationSidebar = ({ testId }: ConversationSidebarProps) => {
                                             Apply
                                           </button>
                                         )}
-                                        {/* ... */}
                                       </div>
                                     </div>
                                     <div className="p-3 overflow-x-auto text-[13px] text-slate-50 font-mono leading-relaxed custom-scrollbar">
