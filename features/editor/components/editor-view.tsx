@@ -39,6 +39,7 @@ export const EditorView = ({ testId }: { testId: string }) => {
           <CodeEditor
             key={activeFile.id} // Quan trọng: Re-render editor khi đổi file
             fileName={activeFile.name}
+            testId={testId}
             initialValue={activeFile.content}
             onChange={(content: string) => {
               if (timeoutRef.current) clearTimeout(timeoutRef.current);

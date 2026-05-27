@@ -2,7 +2,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Poppins } from "next/font/google";
 import { toast } from "sonner";
@@ -47,15 +47,14 @@ const font = Poppins({
   weight: ["400", "500", "600", "700"],
 });
 
-// 1. Cập nhật Type để nhận thêm startTime từ Backend
 type TestSessionData = {
   id: string;
-  startTime: string; // ISO String từ DB
+  startTime: string;
   scenario: {
     id: string;
     title: string;
     context: string;
-    timeLimit: number; // Phút
+    timeLimit: number;
   };
   updatedAt: string;
 };
@@ -64,23 +63,33 @@ export const Navbar = ({ testId }: { testId: string }) => {
   const router = useRouter();
   const [test, setTest] = useState<TestSessionData | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // State lưu số giây còn lại
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
+  const [hasSubmitted, setHasSubmitted] = useState(false);
 
+  // Refs chỉ dùng trong handler và effect, không dùng trong render
+  const isSubmittingRef = useRef(false);
+  const hasSubmittedRef = useRef(false);
+
+  // Kiểm tra trạng thái đã nộp từ localStorage
+  useEffect(() => {
+    const already = localStorage.getItem(`submitted_${testId}`);
+    if (already === "true") {
+      hasSubmittedRef.current = true;
+      setHasSubmitted(true);
+    }
+  }, [testId]);
+
+  // Lấy thông tin bài test
   useEffect(() => {
     apiClient
       .get(`/tests/${testId}`)
       .then((response) => {
         const data = response.data;
         setTest(data);
-
-        // 2. Tính toán thời gian còn lại ngay khi load dữ liệu
         if (data.startTime && data.scenario.timeLimit) {
           const start = new Date(data.startTime).getTime();
           const limitInMs = data.scenario.timeLimit * 60 * 1000;
           const now = Date.now();
-
           const remainingSeconds = Math.floor((start + limitInMs - now) / 1000);
           setSecondsLeft(remainingSeconds > 0 ? remainingSeconds : 0);
         }
@@ -88,24 +97,6 @@ export const Navbar = ({ testId }: { testId: string }) => {
       .catch((err) => console.error("Lỗi tải thông tin bài test:", err));
   }, [testId]);
 
-  // 3. Hiệu ứng đếm ngược mỗi giây
-  useEffect(() => {
-    if (secondsLeft === null || secondsLeft <= 0) {
-      if (secondsLeft === 0 && !isSubmitting) {
-        // Tự động nộp bài khi hết giờ (Tùy chọn)
-        // handleSubmitTest();
-      }
-      return;
-    }
-
-    const timer = setInterval(() => {
-      setSecondsLeft((prev) => (prev !== null && prev > 0 ? prev - 1 : 0));
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [secondsLeft, isSubmitting]);
-
-  // 4. Hàm định dạng giây thành MM:SS
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -113,58 +104,136 @@ export const Navbar = ({ testId }: { testId: string }) => {
   };
 
   const handleSubmitTest = async () => {
+    if (isSubmittingRef.current || hasSubmittedRef.current) return;
+
     if (
       !window.confirm(
         "Bạn có chắc chắn muốn nộp bài? Hành động này không thể hoàn tác.",
       )
-    ) {
+    )
       return;
-    }
+
+    isSubmittingRef.current = true;
+    setIsSubmitting(true);
 
     try {
-      setIsSubmitting(true);
-
-      // 1. Lấy mảng files ứng viên đã code từ Local Storage
       const savedFiles = localStorage.getItem(`ide_files_${testId}`);
-      
-      // 2. Chuyển đổi thành Object phẳng chứa Code để gửi lên Backend
-      // Dạng mong đợi: { "src/main.jsx": { file: { contents: "..." } } }
-      const finalCode: Record<string, any> = {};
-      
-      if (savedFiles) {
-        const filesArr = JSON.parse(savedFiles);
-        
-        // Hàm đệ quy nhỏ để lấy đường dẫn đầy đủ (VD: src/components/Button.jsx)
-        const getFullPath = (fileId: string, allFiles: any[]): string => {
-          const file = allFiles.find((f) => f.id === fileId);
-          if (!file) return "";
-          if (!file.parentId) return file.name;
-          return `${getFullPath(file.parentId, allFiles)}/${file.name}`;
-        };
-
-        filesArr.forEach((f: any) => {
-          if (f.type === "file") {
-            const fullPath = getFullPath(f.id, filesArr);
-            finalCode[fullPath] = { file: { contents: f.content || "" } };
-          }
-        });
+      if (!savedFiles) {
+        toast.error("Không có mã nguồn để nộp.");
+        return;
       }
 
-      // 3. NHÉT finalCode VÀO BODY REQUEST
+      let filesArr;
+      try {
+        filesArr = JSON.parse(savedFiles);
+      } catch (parseErr) {
+        console.error("Lỗi parse localStorage", parseErr);
+        toast.error("Dữ liệu bài làm bị hỏng, vui lòng tải lại trang.");
+        return;
+      }
+
+      const getFullPath = (fileId: string, allFiles: any[]): string => {
+        const file = allFiles.find((f) => f.id === fileId);
+        if (!file) return "";
+        if (!file.parentId) return file.name;
+        return `${getFullPath(file.parentId, allFiles)}/${file.name}`;
+      };
+
+      const SKIP_DIRS = [
+        "node_modules",
+        "dist",
+        "build",
+        ".next",
+        ".git",
+        "__pycache__",
+        "venv",
+        ".venv",
+      ];
+      const KEEP_EXTENSIONS = [
+        ".js",
+        ".ts",
+        ".jsx",
+        ".tsx",
+        ".py",
+        ".java",
+        ".go",
+        ".json",
+        ".html",
+        ".css",
+        ".vue",
+        ".svelte",
+      ];
+      const MAX_TOTAL_CHARS = 250_000;
+
+      const finalCode: Record<string, { file: { contents: string } }> = {};
+      let totalChars = 0;
+
+      for (const file of filesArr) {
+        if (file.type !== "file") continue;
+        const fullPath = getFullPath(file.id, filesArr);
+        if (
+          SKIP_DIRS.some(
+            (dir) =>
+              fullPath.includes(`/${dir}/`) || fullPath.startsWith(`${dir}/`),
+          )
+        )
+          continue;
+        const ext = fullPath.substring(fullPath.lastIndexOf("."));
+        if (!KEEP_EXTENSIONS.includes(ext)) continue;
+        const content = file.content || "";
+        if (content.length > 100_000) continue;
+        if (totalChars + content.length > MAX_TOTAL_CHARS) {
+          console.warn(`Vượt quá giới hạn ký tự, bỏ qua các file còn lại.`);
+          break;
+        }
+        finalCode[fullPath] = { file: { contents: content } };
+        totalChars += content.length;
+      }
+
+      if (Object.keys(finalCode).length === 0) {
+        toast.error("Không có file code hợp lệ để nộp.");
+        return;
+      }
+
+      console.log(
+        `📦 Nộp ${Object.keys(finalCode).length} file, tổng ${totalChars} ký tự`,
+      );
+
       await apiClient.post(`/tests/${testId}/submit`, { finalCode });
 
-      toast.success(
-        "Nộp bài thành công! AI đang tiến hành phân tích mã nguồn của bạn.",
-      );
-      setTimeout(() => {
-        router.push("/tests");
-      }, 1500);
-    } catch (error) {
-      console.error("Lỗi khi nộp bài:", error);
-      toast.error("Có lỗi xảy ra khi nộp bài. Vui lòng thử lại.");
+      localStorage.setItem(`submitted_${testId}`, "true");
+      hasSubmittedRef.current = true;
+      setHasSubmitted(true);
+
+      toast.success("Nộp bài thành công! AI đang phân tích...");
+      setTimeout(() => router.push("/tests"), 1500);
+    } catch (error: any) {
+      console.error("Submit error:", error);
+      const message =
+        error.response?.data?.message ||
+        error.response?.data?.error ||
+        "Lỗi khi nộp bài, thử lại sau.";
+      toast.error(message);
+    } finally {
+      isSubmittingRef.current = false;
       setIsSubmitting(false);
     }
   };
+
+  // Đếm ngược và tự động nộp khi hết giờ
+  useEffect(() => {
+    if (secondsLeft === null || secondsLeft <= 0) {
+      if (secondsLeft === 0 && !hasSubmittedRef.current && !isSubmittingRef.current) {
+        handleSubmitTest();
+      }
+      return;
+    }
+
+    const timer = setInterval(() => {
+      setSecondsLeft((prev) => (prev !== null && prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [secondsLeft]);
 
   return (
     <TooltipProvider>
@@ -242,12 +311,11 @@ export const Navbar = ({ testId }: { testId: string }) => {
             </DialogContent>
           </Dialog>
 
-          {/* 5. Cập nhật UI hiển thị thời gian thực */}
           <div
             className={cn(
               "hidden md:flex items-center gap-2 text-sm font-mono px-3 py-1.5 rounded-md transition-colors",
               secondsLeft !== null && secondsLeft < 300
-                ? "text-red-500 bg-red-500/10 animate-pulse" // Cảnh báo khi còn dưới 5 phút
+                ? "text-red-500 bg-red-500/10 animate-pulse"
                 : "text-orange-500 bg-orange-500/10",
             )}
           >
@@ -261,7 +329,7 @@ export const Navbar = ({ testId }: { testId: string }) => {
             size="sm"
             className="h-8 bg-primary gap-1.5"
             onClick={handleSubmitTest}
-            disabled={isSubmitting}
+            disabled={isSubmitting || hasSubmitted}
           >
             {isSubmitting ? (
               <IconLoader2 className="size-4 animate-spin" />

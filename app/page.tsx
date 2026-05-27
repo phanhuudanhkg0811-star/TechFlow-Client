@@ -232,7 +232,7 @@ export default function HomePage() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`relative px-6 py-3 rounded-full flex items-center gap-2 font-semibold transition-colors ${
+                className={`relative px-6 py-3 rounded-full flex items-center gap-2 font-semibold transition-colors${
                   activeTab === tab.id
                     ? "text-primary-foreground"
                     : "text-muted-foreground hover:text-foreground"
@@ -260,7 +260,7 @@ export default function HomePage() {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
-                  className="text-center max-w-xl"
+                  className="text-center max-w-xl min-h-52"
                 >
                   <div className="w-14 h-14 bg-primary/10 text-primary rounded-2xl flex items-center justify-center mx-auto mb-6">
                     <Layers className="w-7 h-7" />
@@ -279,7 +279,7 @@ export default function HomePage() {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
-                  className="text-center max-w-xl"
+                  className="text-center max-w-xl min-h-52"
                 >
                   <div className="w-14 h-14 bg-primary/10 text-primary rounded-2xl flex items-center justify-center mx-auto mb-6">
                     <Terminal className="w-7 h-7" />
@@ -298,7 +298,7 @@ export default function HomePage() {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
-                  className="text-center max-w-xl"
+                  className="text-center max-w-xl min-h-52"
                 >
                   <div className="w-14 h-14 bg-primary/10 text-primary rounded-2xl flex items-center justify-center mx-auto mb-6">
                     <Cpu className="w-7 h-7" />
