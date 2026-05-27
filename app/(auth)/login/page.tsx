@@ -1,9 +1,6 @@
 "use client";
 
-import { Suspense, useEffect } from "react";
-import { useSearchParams, useRouter } from "next/navigation"; // Quan trọng: Dùng next/navigation
-import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
+import { Suspense } from "react";
 import {
   Card,
   CardContent,
@@ -11,6 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { IconBrandGithub } from "@tabler/icons-react";
 
 // 1. Tách logic xử lý SearchParams ra một component con
@@ -21,15 +19,20 @@ function LoginContent() {
   };
 
   return (
-    <Card className="w-[350px]">
-      <CardHeader>
-        <CardTitle className="text-xl">Login</CardTitle>
-        <CardDescription>Login with your Github Account</CardDescription>
+    <Card className="w-full bg-card/60 dark:bg-card/30 backdrop-blur-lg border-border/50 shadow-xl">
+      <CardHeader className="text-center">
+        <CardDescription className="pt-1">
+          Đăng nhập bằng tài khoản GitHub để bắt đầu hành trình của bạn.
+        </CardDescription>
       </CardHeader>
 
-      <CardContent>
-        <Button className="w-full" variant="outline" onClick={handleSignIn}>
-          <IconBrandGithub className="mr-2 size-4" /> Sign in with Github
+      <CardContent className="space-y-4">
+        <Button
+          className="w-full h-12 text-base font-semibold gap-2 bg-foreground text-background hover:bg-foreground/90 dark:bg-white dark:text-black dark:hover:bg-white/90"
+          onClick={handleSignIn}
+        >
+          <IconBrandGithub className="size-5" />
+          Sign in with GitHub
         </Button>
       </CardContent>
     </Card>

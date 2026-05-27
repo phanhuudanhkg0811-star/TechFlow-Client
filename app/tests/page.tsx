@@ -3,8 +3,6 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { formatDistanceToNow } from "date-fns";
-import { vi } from "date-fns/locale";
 import ReactMarkdown from "react-markdown";
 
 import { Card, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -173,7 +171,7 @@ export default function CandidateTestsPage() {
                       </Button>
                     )}
 
-                    {isTestable ? (
+                    {isTestable == false ? (
                       <Button
                         onClick={() => handleStartTest(app.testSession!.id)}
                         className="shadow-md shadow-primary/20 hover:shadow-primary/40 transition-shadow"

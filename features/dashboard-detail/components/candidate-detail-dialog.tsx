@@ -2,270 +2,156 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
+  DialogFooter,
 } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import {
-  IconMail,
-  IconBrandGithub,
-  IconAlertTriangle,
-  IconCode,
-  IconInfoCircle,
-} from "@tabler/icons-react";
-import ReactMarkdown from "react-markdown";
+import { Spinner } from "@/components/ui/spinner";
 import apiClient from "@/lib/apiClient";
+import ReactMarkdown from "react-markdown";
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden"; // Import để ẩn Title nếu không muốn show
 
-export function CandidateDetailDialog({
+interface CandidateDetailDialogProps {
+  appId: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+export const CandidateDetailDialog = ({
   appId,
   open,
   onOpenChange,
-}: {
-  appId: string;
-  open: boolean;
-  onOpenChange: (o: boolean) => void;
-}) {
-  const [data, setData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+}: CandidateDetailDialogProps) => {
+  const [candidateData, setCandidateData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (open && appId) {
-      setLoading(true);
+      setIsLoading(true);
       apiClient
         .get(`/dashboard/applications/${appId}`)
-        .then((res) => setData(res.data))
-        .finally(() => setLoading(false));
+        .then((res) => setCandidateData(res.data))
+        .catch((err) => console.error("Error fetching candidate details:", err))
+        .finally(() => setIsLoading(false));
+    } else {
+      setCandidateData(null);
     }
   }, [open, appId]);
 
-  if (!data) return null;
+  // 1. TRẠNG THÁI LOADING
+  if (isLoading) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-4xl flex flex-col max-h-[90vh] overflow-hidden gap-0 p-0 rounded-xl border-border/50 shadow-2xl">
+          {/* FIX LỖI ACCESSIBILITY: Thêm Title ẩn cho Radix */}
+          <VisuallyHidden>
+            <DialogTitle>Đang tải dữ liệu ứng viên</DialogTitle>
+            <DialogDescription>
+              Vui lòng đợi trong giây lát...
+            </DialogDescription>
+          </VisuallyHidden>
 
-  const { user, report, testSession } = data;
+          <div className="flex flex-col items-center justify-center h-64">
+            <Spinner className="text-primary size-8" />
+            <p className="text-muted-foreground mt-4">
+              Đang tải chi tiết ứng viên...
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
+  // 2. TRẠNG THÁI LỖI (KHÔNG TÌM THẤY DỮ LIỆU)
+  if (!candidateData) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-4xl flex flex-col max-h-[90vh] overflow-hidden gap-0 p-0 rounded-xl border-border/50 shadow-2xl">
+          <DialogHeader className="flex-none p-6 bg-muted/30 border-b border-border/40">
+            <DialogTitle>Không tìm thấy dữ liệu ứng viên</DialogTitle>
+            <DialogDescription>
+              Dữ liệu ứng viên này không tồn tại hoặc đã bị xóa.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto p-6 prose prose-sm dark:prose-invert max-w-none bg-background">
+            <p className="text-muted-foreground">
+              Có lỗi xảy ra hoặc không tìm thấy thông tin ứng viên.
+            </p>
+          </div>
+          <DialogFooter className="flex-none p-4 border-t border-border/40 bg-muted/10 sm:justify-end">
+            <Button onClick={() => onOpenChange(false)}>Đóng</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  const { user, cvText, matchScore, assessmentReport } = candidateData;
+
+  // 3. TRẠNG THÁI HIỂN THỊ DỮ LIỆU THÀNH CÔNG
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col p-0 overflow-hidden">
-        <DialogHeader className="p-6 bg-muted/30 border-b">
-          <div className="flex justify-between items-start">
-            <div className="space-y-1">
-              <DialogTitle className="text-2xl">
-                {user.name || "Ứng viên ẩn danh"}
-              </DialogTitle>
-              <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                <span className="flex items-center gap-1">
-                  <IconMail size={14} /> {user.email}
-                </span>
-                {user.githubUsername && (
-                  <span className="flex items-center gap-1">
-                    <IconBrandGithub size={14} /> {user.githubUsername}
-                  </span>
-                )}
-              </div>
+      <DialogContent className="max-w-4xl flex flex-col max-h-[90vh] overflow-hidden gap-0 p-0 rounded-xl border-border/50 shadow-2xl">
+        
+        {/* FIX LỖI TABS: Bọc TOÀN BỘ Header và Body vào trong thẻ <Tabs> */}
+        <Tabs defaultValue="cv" className="flex flex-col h-full overflow-hidden">
+          
+          <DialogHeader className="flex-none p-6 bg-muted/30 border-b border-border/40">
+            <DialogTitle className="text-2xl font-bold">
+              {user?.name || user?.email}
+            </DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              {user?.email}
+            </DialogDescription>
+            
+            {/* TabsList nằm trong Header để luôn hiển thị */}
+            <div className="mt-4">
+              <TabsList>
+                <TabsTrigger value="cv">CV</TabsTrigger>
+                <TabsTrigger value="github">GitHub Review</TabsTrigger>
+                <TabsTrigger value="test">Bài làm</TabsTrigger>
+              </TabsList>
             </div>
-            <div className="text-right">
-              <div className="text-sm text-muted-foreground mb-1">
-                Điểm AI Match
-              </div>
-              <div className="text-3xl font-black text-indigo-600">
-                {data.matchScore}%
-              </div>
-            </div>
-          </div>
-        </DialogHeader>
+          </DialogHeader>
 
-        <Tabs
-          defaultValue="assessment"
-          className="flex-1 flex flex-col min-h-0"
-        >
-          <div className="px-6 border-b bg-background">
-            <TabsList className="h-12 bg-transparent gap-6">
-              <TabsTrigger
-                value="assessment"
-                className="data-[state=active]:border-b-2 border-indigo-500 rounded-none bg-transparent"
-              >
-                Đánh giá AI
-              </TabsTrigger>
-              <TabsTrigger
-                value="cv"
-                className="data-[state=active]:border-b-2 border-indigo-500 rounded-none bg-transparent"
-              >
-                Nội dung CV
-              </TabsTrigger>
-              <TabsTrigger
-                value="code"
-                className="data-[state=active]:border-b-2 border-indigo-500 rounded-none bg-transparent"
-              >
-                Mã nguồn bài làm
-              </TabsTrigger>
-              <TabsTrigger
-                value="interview"
-                className="data-[state=active]:border-b-2 border-indigo-500 rounded-none bg-transparent"
-              >
-                Câu hỏi phỏng vấn
-              </TabsTrigger>
-            </TabsList>
-          </div>
-
-          <ScrollArea className="flex-1 p-6">
-            {/* TAB 1: ĐÁNH GIÁ AI */}
-            <TabsContent value="assessment" className="mt-0 space-y-6">
-              {/* Cảnh báo gian lận/Red flags */}
-              {report?.riskFlags && report.riskFlags.length > 0 && (
-                <Alert
-                  variant="destructive"
-                  className="bg-red-50 dark:bg-red-950/20 border-red-200"
-                >
-                  <IconAlertTriangle className="size-5" />
-                  <AlertTitle className="font-bold">
-                    Cảnh báo nghi vấn (Risk Flags)
-                  </AlertTitle>
-                  <AlertDescription>
-                    <ul className="list-disc ml-4 mt-2">
-                      {report.riskFlags.map((flag: string, i: number) => (
-                        <li key={i}>{flag}</li>
-                      ))}
-                    </ul>
-                  </AlertDescription>
-                </Alert>
+          {/* Phần Body: chiếm hết không gian còn lại và có thanh cuộn dọc */}
+          <div className="flex-1 overflow-y-auto p-6 bg-background">
+            <TabsContent value="cv" className="mt-0 outline-none prose prose-sm dark:prose-invert max-w-none">
+              <h3 className="text-xl font-semibold mb-2">CV Content</h3>
+              <p className="mb-4"><strong>Match Score:</strong> {matchScore}%</p>
+              <ReactMarkdown>{cvText}</ReactMarkdown>
+            </TabsContent>
+            
+            <TabsContent value="github" className="mt-0 outline-none prose prose-sm dark:prose-invert max-w-none">
+              <h3 className="text-xl font-semibold mb-2">GitHub Review</h3>
+              {assessmentReport ? (
+                <ReactMarkdown>{assessmentReport.summary}</ReactMarkdown>
+              ) : (
+                <p>Không có báo cáo GitHub.</p>
               )}
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="p-4 border rounded-xl bg-indigo-50/30">
-                  <div className="text-sm font-bold text-indigo-600 uppercase mb-2">
-                    Kiến trúc (Architecture)
-                  </div>
-                  <div className="text-2xl font-bold">
-                    {report?.architectureScore || 0}/100
-                  </div>
-                </div>
-                <div className="p-4 border rounded-xl bg-emerald-50/30">
-                  <div className="text-sm font-bold text-emerald-600 uppercase mb-2">
-                    Clean Code
-                  </div>
-                  <div className="text-2xl font-bold">
-                    {report?.cleanCodeScore || 0}/100
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <h3 className="font-bold flex items-center gap-2">
-                  <IconInfoCircle size={18} /> Tóm tắt năng lực thực chiến
-                </h3>
-                <div className="prose prose-sm max-w-none bg-muted/30 p-4 rounded-xl border">
-                  <ReactMarkdown>
-                    {report?.summary || "AI đang tiến hành phân tích..."}
-                  </ReactMarkdown>
-                </div>
-              </div>
             </TabsContent>
-            {/* TAB 2: NỘI DUNG CV */}
-            <TabsContent value="cv" className="mt-0">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-bold flex items-center gap-2">
-                    <IconInfoCircle size={18} /> Dữ liệu bóc tách từ PDF
-                  </h3>
-                  <Badge variant="secondary">AI Parsed</Badge>
-                </div>
-
-                <ScrollArea className="h-[500px] w-full rounded-xl border bg-white dark:bg-slate-950 p-6">
-                  <div className="prose prose-sm max-w-none dark:prose-invert font-sans leading-relaxed text-slate-700 dark:text-slate-300">
-                    {/* Hiển thị nội dung cvText từ Database */}
-                    {data.cvText ? (
-                      <div className="whitespace-pre-wrap">{data.cvText}</div>
-                    ) : (
-                      <div className="text-center py-20 text-muted-foreground italic">
-                        Không tìm thấy dữ liệu văn bản cho CV này.
-                      </div>
-                    )}
-                  </div>
-                </ScrollArea>
-
-                <div className="p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-100 rounded-lg text-xs text-blue-600 dark:text-blue-400">
-                  <strong>Lưu ý:</strong> Đây là nội dung văn bản mà AI đã trích
-                  xuất để thực hiện chấm điểm Match Score.
-                </div>
-              </div>
+            
+            <TabsContent value="test" className="mt-0 outline-none prose prose-sm dark:prose-invert max-w-none">
+              <h3 className="text-xl font-semibold mb-2">Bài làm của ứng viên</h3>
+              <p>Chưa có dữ liệu bài làm.</p>
             </TabsContent>
-            {/* TAB 3: MÃ NGUỒN */}
-            <TabsContent value="code" className="mt-0">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-bold flex items-center gap-2">
-                    <IconCode size={18} /> Review Source Code
-                  </h3>
-                  <Badge variant="outline">Mã nguồn cuối cùng</Badge>
-                </div>
-                {testSession?.finalCode ? (
-                  <div className="space-y-4">
-                    {/* Render từng file code từ cục JSON finalCode */}
-                    {Object.entries(testSession.finalCode).map(
-                      ([path, file]: [string, any]) => (
-                        <div
-                          key={path}
-                          className="border rounded-lg overflow-hidden"
-                        >
-                          <div className="bg-muted px-3 py-1.5 text-xs font-mono border-b">
-                            {path}
-                          </div>
-                          <pre className="p-4 text-xs bg-[#1e1e2e] text-slate-300 overflow-x-auto">
-                            <code>
-                              {file?.file?.contents || "// No content"}
-                            </code>
-                          </pre>
-                        </div>
-                      ),
-                    )}
-                  </div>
-                ) : (
-                  <div className="text-center py-20 text-muted-foreground italic">
-                    Ứng viên chưa nộp bài hoặc bài làm trống.
-                  </div>
-                )}
-              </div>
-            </TabsContent>
+          </div>
 
-            {/* TAB 4: PHỎNG VẤN */}
-            <TabsContent value="interview" className="mt-0 space-y-6">
-              <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 p-4 rounded-xl">
-                <p className="text-sm text-amber-800 dark:text-amber-400">
-                  Dưới đây là bộ câu hỏi được AI tự động biên soạn dựa trên{" "}
-                  <strong>sai sót trong code</strong> và{" "}
-                  <strong>điểm nghi vấn trên CV</strong> của ứng viên.
-                </p>
-              </div>
-
-              <div className="space-y-4">
-                {report?.interviewQuestions?.map((q: any, i: number) => (
-                  <div
-                    key={i}
-                    className="p-4 border rounded-xl hover:bg-muted/30 transition-colors"
-                  >
-                    <div className="font-bold text-indigo-600 mb-1">
-                      Câu hỏi {i + 1}:
-                    </div>
-                    <p className="text-sm font-medium mb-3">{q.question}</p>
-                    <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-bold">
-                      Mục đích kiểm tra:
-                    </div>
-                    <p className="text-xs text-muted-foreground italic">
-                      {q.purpose}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </TabsContent>
-          </ScrollArea>
         </Tabs>
+
+        <DialogFooter className="flex-none p-4 border-t border-border/40 bg-muted/10 sm:justify-end">
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>
+            Đóng
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
-}
+};

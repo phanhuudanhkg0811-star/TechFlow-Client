@@ -19,7 +19,7 @@ const geistMono = IBM_Plex_Mono({
 
 export const metadata: Metadata = {
   title: "AI-TechFlow",
-  description: "Định hình lại tuyển dụng IT với Agentic AI",
+  description: "Định hình lại tuyển dụng IT với Artificial Intelligence",
 };
 
 export default function RootLayout({
