@@ -6,12 +6,10 @@ import {
   CardContent,
   CardDescription,
   CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { IconBrandGithub } from "@tabler/icons-react";
 
-// 1. Tách logic xử lý SearchParams ra một component con
 function LoginContent() {
   const handleSignIn = () => {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
@@ -39,7 +37,6 @@ function LoginContent() {
   );
 }
 
-// 2. Component chính đóng vai trò là "vỏ bọc" Suspense
 export default function LoginPage() {
   return (
     <div className="flex items-center justify-center">
