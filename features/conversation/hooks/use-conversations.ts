@@ -23,21 +23,6 @@ export type Message = {
 // CUSTOM HOOKS
 // ============================================================================
 
-export const useConversation = (id: string | null) => {
-  const [data, setData] = useState<Conversation | null>(null);
-
-  useEffect(() => {
-    if (!id) return;
-
-    apiClient
-      .get(`/conversations/${id}`)
-      .then((res) => setData(res.data))
-      .catch((err) => console.error("Lỗi tải hội thoại:", err));
-  }, [id]);
-
-  return data;
-};
-
 export const useMessages = (conversationId: string | null) => {
   // Trả về undefined lúc ban đầu để UI biết là đang loading (giống logic của Convex)
   const [data, setData] = useState<Message[] | undefined>(undefined);
