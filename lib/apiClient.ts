@@ -4,111 +4,30 @@ import { toast } from "sonner";
 
 const apiClient = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001",
-  withCredentials: true,
+  // QUAN TRỌNG NHẤT: Bắt trình duyệt tự động gửi Cookie kèm mọi request
+  withCredentials: true, 
 });
 
 // ==============================================================================
-// 1. CƠ CHẾ QUEUE & DECODE JWT CHO REQUEST INTERCEPTOR
+// 1. CƠ CHẾ QUEUE (DÙNG CHO TRƯỜNG HỢP NHIỀU REQUEST CÙNG CHẾT LỖI 401 1 LÚC)
 // ==============================================================================
 let isRefreshing = false;
-let requestQueue: any[] = [];
+let failedQueue: any[] = [];
 
 // Xử lý các request đang bị "treo" chờ refresh token
-const processQueue = (error: any, token: string | null = null) => {
-  requestQueue.forEach((prom) => {
-    if (error) prom.reject(error);
-    else prom.resolve(token);
-  });
-  requestQueue = [];
-};
-
-// Hàm dịch ngược JWT để lấy thời gian mà không cần thư viện ngoài
-const parseJwt = (token: string) => {
-  try {
-    const base64Url = token.split(".")[1];
-    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
-    const jsonPayload = decodeURIComponent(
-      window
-        .atob(base64)
-        .split("")
-        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
-        .join(""),
-    );
-    return JSON.parse(jsonPayload);
-  } catch (e) {
-    return null;
-  }
-};
-
-// ==============================================================================
-// 2. REQUEST INTERCEPTOR: TỰ ĐỘNG REFRESH TOKEN KHI ĐẠT 70% THỜI GIAN SỐNG
-// ==============================================================================
-apiClient.interceptors.request.use(
-  async (config) => {
-    // Bỏ qua các route auth để tránh lặp vô tận
-    if (config.url?.includes("/auth/")) return config;
-
-    if (typeof window !== "undefined") {
-      const token = localStorage.getItem("accessToken");
-
-      if (token) {
-        // Gắn Bearer Token vào header (phòng hờ backend cần lấy từ header thay vì Cookie)
-        config.headers.Authorization = `Bearer ${token}`;
-
-        const decoded = parseJwt(token);
-        if (decoded && decoded.exp && decoded.iat) {
-          const currentTime = Date.now() / 1000;
-          const lifetime = decoded.exp - decoded.iat;
-
-          // Mốc 70% thời gian sống
-          const timeToRefresh = decoded.iat + lifetime * 0.7;
-
-          // Nếu đã chạm mốc 70% nhưng chưa hết hạn hẳn
-          if (currentTime >= timeToRefresh && currentTime < decoded.exp) {
-            if (!isRefreshing) {
-              isRefreshing = true;
-              try {
-                // Dùng axios thuần để gọi refresh, tránh kích hoạt lại chính interceptor này
-                const res = await axios.post(
-                  `${config.baseURL}/auth/refresh`,
-                  {},
-                  { withCredentials: true },
-                );
-                const newToken =
-                  res.data?.data?.accessToken || res.data?.accessToken;
-
-                if (newToken) {
-                  localStorage.setItem("accessToken", newToken);
-                  config.headers.Authorization = `Bearer ${newToken}`;
-                  processQueue(null, newToken);
-                }
-              } catch (err) {
-                processQueue(err, null);
-              } finally {
-                isRefreshing = false;
-              }
-            } else {
-              // Nếu đang có 1 request khác làm nhiệm vụ refresh rồi, các request tới cùng lúc phải xếp hàng đợi
-              return new Promise((resolve, reject) => {
-                requestQueue.push({ resolve, reject });
-              })
-                .then((newToken) => {
-                  config.headers.Authorization = `Bearer ${newToken}`;
-                  return config;
-                })
-                .catch((err) => Promise.reject(err));
-            }
-          }
-        }
-      }
+const processQueue = (error: any) => {
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(); // Không cần truyền token nữa vì trình duyệt tự lo Cookie
     }
-    return config;
-  },
-  (error) => Promise.reject(error),
-);
+  });
+  failedQueue = [];
+};
 
 // ==============================================================================
-// 3. RESPONSE INTERCEPTOR (Phương án dự phòng - Fallback)
+// 2. RESPONSE INTERCEPTOR: Xử lý 401 và tự động gọi Refresh
 // ==============================================================================
 apiClient.interceptors.response.use(
   (response) => {
@@ -132,7 +51,6 @@ apiClient.interceptors.response.use(
     const url = originalRequest?.url || "";
 
     // 2. TẠO DANH SÁCH "ĐƯỜNG CẤM" (Silent endpoints)
-    // Nếu gọi AI bị lỗi 429 hay 503 thì âm thầm trả về reject, không hiện Toast
     const silentEndpoints = ["/ai/suggestion", "/ai/quick-edit"];
     const isSilentEndpoint = silentEndpoints.some((endpoint) =>
       url.includes(endpoint),
@@ -144,48 +62,55 @@ apiClient.interceptors.response.use(
 
     const skipToast = originalRequest?.skipToast;
 
-    // 3. XỬ LÝ LỖI 401 (HẾT HẠN TOKEN)
+    // 3. XỬ LÝ LỖI 401 (HẾT HẠN COOKIE ACCESS TOKEN)
     if (
       error.response?.status === 401 &&
       originalRequest &&
       !originalRequest._retry &&
       url !== "/auth/refresh"
     ) {
+      
+      // Nếu có 1 request khác đang đi refresh rồi, thì request này phải xếp hàng
+      if (isRefreshing) {
+        return new Promise(function (resolve, reject) {
+          failedQueue.push({ resolve, reject });
+        })
+          .then(() => {
+            return apiClient(originalRequest);
+          })
+          .catch((err) => Promise.reject(err));
+      }
+
+      // Đánh dấu là đã thử retry để tránh lặp vô tận
       originalRequest._retry = true;
+      isRefreshing = true;
 
       try {
-        // QUAN TRỌNG: Dùng axios thuần giống hệt ở trên để tránh bị dính interceptor
-        const res = await axios.post(
+        // Dùng axios thuần gọi Refresh, trình duyệt sẽ gửi Refresh Token (Cookie) lên
+        await axios.post(
           `${originalRequest.baseURL || "http://localhost:3001"}/auth/refresh`,
           {},
           { withCredentials: true }
         );
         
-        // Lấy token mới từ body response
-        const newToken = res.data?.data?.accessToken || res.data?.accessToken;
-
-        if (newToken) {
-          // 1. Cập nhật localStorage để các request sau dùng
-          localStorage.setItem("accessToken", newToken);
-          // 2. Cập nhật header cho request đang bị lỗi để nó gửi lại đúng
-          originalRequest.headers.Authorization = `Bearer ${newToken}`;
-          
-          // 3. Gọi lại API bị lỗi
-          return apiClient(originalRequest);
-        } else {
-          throw new Error("Không nhận được token mới từ server");
-        }
+        // Thành công!
+        isRefreshing = false;
+        processQueue(null);
+        // Gọi lại chính cái request vừa bị chết 401
+        return apiClient(originalRequest);
+        
       } catch (refreshError) {
-        // Refresh thất bại (hết 7 ngày) -> Đuổi thẳng cổ ra Login
-        console.error("Phiên đăng nhập đã hết hạn hoàn toàn");
-        localStorage.removeItem("accessToken"); // Nhớ dọn rác luôn
+        // Refresh thất bại (Refresh Token cũng hết hạn sau 7 ngày) -> Đuổi ra trang Login
+        isRefreshing = false;
+        processQueue(refreshError);
+        
+        toast.error("Phiên đăng nhập đã hết hạn hoàn toàn");
         window.location.href = "/login";
         return Promise.reject(refreshError);
       }
     }
 
     // 4. XỬ LÝ TOAST THÔNG BÁO CHO CÁC LỖI KHÁC
-    // Nếu lỗi chính là từ /auth/refresh thì block try-catch ở trên đã xử lý redirect rồi, không cần Toast.
     if (!skipToast && url !== "/auth/refresh") {
       let message = "Đã có lỗi xảy ra. Vui lòng thử lại.";
 

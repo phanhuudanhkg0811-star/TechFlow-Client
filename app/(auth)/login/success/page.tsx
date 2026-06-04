@@ -1,29 +1,18 @@
 "use client";
 
 import { Suspense, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { IconLoader2 } from "@tabler/icons-react";
 import { Card, CardContent } from "@/components/ui/card";
 
 function AuthCallbackHandler() {
-  const searchParams = useSearchParams();
   const router = useRouter();
 
   useEffect(() => {
-    const token = searchParams.get("accessToken");
-
-    if (token) {
-      // Lưu token vào localStorage
-      localStorage.setItem("accessToken", token);
-      
-      setTimeout(() => {
-        router.push("/");
-      }, 2000);
-    } else {
-      // Nếu không có token (lỗi hoặc truy cập bậy), đá về lại trang login
-      router.push("/login");
-    }
-  }, [searchParams, router]);
+    setTimeout(() => {
+      router.push("/");
+    }, 2000);
+  }, [router]);
 
   return (
     <div className="flex flex-col items-center justify-center space-y-4">
@@ -42,7 +31,7 @@ export default function AuthSuccessPage() {
       <div className="w-full max-w-sm">
         <Card className="border-none shadow-none bg-transparent">
           <CardContent className="pt-6">
-            <Suspense 
+            <Suspense
               fallback={
                 <div className="flex flex-col items-center justify-center space-y-4">
                   <IconLoader2 className="h-10 w-10 animate-spin text-primary" />
