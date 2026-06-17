@@ -111,7 +111,7 @@ export const CodeEditor = ({
         keymap.of([indentWithTab]),
         minimap(),
         indentationMarkers(),
-        clipboardListener, // CHÈN LISTENER VÀO ĐÂY
+        clipboardListener,
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {
             onChange(update.state.doc.toString());

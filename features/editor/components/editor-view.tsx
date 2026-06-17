@@ -33,7 +33,7 @@ export const EditorView = ({ testId }: { testId: string }) => {
       <div className="flex-1 min-h-0 bg-background">
         {!activeFile ? (
           <div className="size-full flex items-center justify-center opacity-20">
-            <Image src="/logo-alt.svg" alt="Logo" width={80} height={80} />
+            <Image src="/logo-congty.png" alt="Logo" width={400} height={300} />
           </div>
         ) : (
           <CodeEditor

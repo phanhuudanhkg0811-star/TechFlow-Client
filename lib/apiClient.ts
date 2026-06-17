@@ -4,7 +4,6 @@ import { toast } from "sonner";
 
 const apiClient = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001",
-  // QUAN TRỌNG NHẤT: Bắt trình duyệt tự động gửi Cookie kèm mọi request
   withCredentials: true, 
 });
 
@@ -82,7 +81,7 @@ apiClient.interceptors.response.use(
       }
 
       // Đánh dấu là đã thử retry để tránh lặp vô tận
-      originalRequest._retry = true;
+      originalRequest._retry = true; 
       isRefreshing = true;
 
       try {
@@ -100,7 +99,7 @@ apiClient.interceptors.response.use(
         return apiClient(originalRequest);
         
       } catch (refreshError) {
-        // Refresh thất bại (Refresh Token cũng hết hạn sau 7 ngày) -> Đuổi ra trang Login
+        // Refresh thất bại (Refresh Token cũng hết hạn sau 1 ngày) -> Đuổi ra trang Login
         isRefreshing = false;
         processQueue(refreshError);
         

@@ -151,7 +151,6 @@ interface FileSystemStore {
 const useFileSystemStore = create<FileSystemStore>((set, get) => ({
   files: {},
   isLoaded: {},
-
   init: (testId) => {
     // Nếu đã load rồi thì bỏ qua để tránh re-render vô ích
     if (get().isLoaded[testId]) return;
@@ -233,7 +232,8 @@ const useFileSystemStore = create<FileSystemStore>((set, get) => ({
   },
 }));
 
-// 2. Wrap Store lại thành Hook y như cũ để các Component xài không bị vỡ UI
+// 2. Wrap Store thành Hook để các Component xài
+
 export function useLocalFiles(testId: string) {
   // Lấy data từ Store, nếu chưa có thì trả về mảng rỗng tạm thời
   const files = useFileSystemStore(
