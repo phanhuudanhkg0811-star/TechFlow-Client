@@ -38,6 +38,12 @@ export const CodeEditor = ({
   const editorRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
 
+  const onChangeRef = useRef(onChange);
+
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
+
   const languageExtension = useMemo(() => {
     return getLanguageExtension(fileName);
   }, [fileName]);
@@ -114,7 +120,7 @@ export const CodeEditor = ({
         clipboardListener,
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {
-            onChange(update.state.doc.toString());
+            onChangeRef.current(update.state.doc.toString());
           }
         }),
       ],
@@ -126,7 +132,7 @@ export const CodeEditor = ({
     return () => {
       view.destroy();
     };
-  }, [languageExtension, onChange, fileName, testId]);
+  }, [languageExtension, fileName, testId]);
 
   useEffect(() => {
     if (viewRef.current && initialValue !== undefined) {
