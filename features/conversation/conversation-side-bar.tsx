@@ -91,9 +91,7 @@ export const ConversationSidebar = ({ testId }: ConversationSidebarProps) => {
     return `${getFullPath(file.parentId)}/${file.name}`;
   };
 
-  // Thay thế hàm handleInsertCode cũ bằng hàm này
   const handleApplyToFile = (fileName: string, code: string) => {
-    // Tìm file dựa trên tên hoặc đường dẫn tương đối
     const targetFile = files.find(
       (f) => f.name === fileName || getFullPath(f.id) === fileName,
     );

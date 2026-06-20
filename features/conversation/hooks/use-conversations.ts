@@ -24,7 +24,6 @@ export type Message = {
 // ============================================================================
 
 export const useMessages = (conversationId: string | null) => {
-  // Trả về undefined lúc ban đầu để UI biết là đang loading (giống logic của Convex)
   const [data, setData] = useState<Message[] | undefined>(undefined);
 
   // Dùng để re-fetch tin nhắn mới

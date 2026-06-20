@@ -64,8 +64,6 @@ export const Terminal = ({ testId }: { testId: string }) => {
         }));
 
         const input = shellProcess.input.getWriter();
-        
-        // Luồng nhập liệu (bao gồm cả Paste)
         term.onData((data) => {
           input.write(data);
         });
@@ -87,8 +85,8 @@ export const Terminal = ({ testId }: { testId: string }) => {
 
     return () => {
       resizeObserver.disconnect();
-      term.dispose();
-      xtermRef.current = null;
+      term.dispose(); //hủy bỏ instance term để đỡ tốn RAM
+      xtermRef.current = null; //set xtermRef là null để cho bài test khác sử dụng
     };
   }, [testId, isLoaded]);
 
