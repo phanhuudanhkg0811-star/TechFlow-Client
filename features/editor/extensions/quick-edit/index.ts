@@ -2,6 +2,7 @@ import { Tooltip, showTooltip, keymap, EditorView } from "@codemirror/view";
 import { StateField, EditorState, StateEffect } from "@codemirror/state";
 
 import { fetcher } from "./fetcher";
+import { isCandidateAiSuggestionEnabled } from "@/features/editor/ai-suggestion-preference";
 
 export const showQuickEditEffect = StateEffect.define<boolean>();
 
@@ -29,10 +30,17 @@ export const quickEditState = StateField.define<boolean>({
   }
 });
 
-const createQuickEditTooltip = (state: EditorState): readonly Tooltip[] => {
+const createQuickEditTooltip = (
+  state: EditorState,
+  testId: string,
+): readonly Tooltip[] => {
   const selection = state.selection.main;
 
   if (selection.empty) {
+    return [];
+  }
+
+  if (!isCandidateAiSuggestionEnabled()) {
     return [];
   }
 
@@ -108,6 +116,7 @@ const createQuickEditTooltip = (state: EditorState): readonly Tooltip[] => {
           currentAbortController = new AbortController();
           const editedCode = await fetcher(
             {
+              testId,
               selectedCode,
               fullCode,
               instruction,
@@ -151,18 +160,19 @@ const createQuickEditTooltip = (state: EditorState): readonly Tooltip[] => {
   ];
 };
 
-const quickEditTooltipField = StateField.define<readonly Tooltip[]>({
+const createQuickEditTooltipField = (testId: string) =>
+StateField.define<readonly Tooltip[]>({
   create(state) {
-    return createQuickEditTooltip(state);
+    return createQuickEditTooltip(state, testId);
   },
 
   update(tooltips, transaction) {
     if (transaction.docChanged || transaction.selection) {
-      return createQuickEditTooltip(transaction.state);
+      return createQuickEditTooltip(transaction.state, testId);
     }
     for (const effect of transaction.effects) {
       if (effect.is(showQuickEditEffect)) {
-        return createQuickEditTooltip(transaction.state);
+        return createQuickEditTooltip(transaction.state, testId);
       }
     }
     return tooltips;
@@ -182,6 +192,10 @@ const quickEditKeymap = keymap.of([
         return false;
       }
 
+      if (!isCandidateAiSuggestionEnabled()) {
+        return false;
+      }
+
       view.dispatch({
         effects: showQuickEditEffect.of(true),
       });
@@ -194,9 +208,9 @@ const captureViewExtension = EditorView.updateListener.of((update) => {
   editorView = update.view;
 });
 
-export const quickEdit = (fileName: string) => [
+export const quickEdit = (fileName: string, testId: string) => [
   quickEditState,
-  quickEditTooltipField,
+  createQuickEditTooltipField(testId),
   quickEditKeymap,
   captureViewExtension,
 ];

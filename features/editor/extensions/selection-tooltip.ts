@@ -1,6 +1,7 @@
 import { Tooltip, showTooltip, EditorView } from "@codemirror/view";
 import { StateField, EditorState } from "@codemirror/state";
 import { showQuickEditEffect, quickEditState } from "./quick-edit";
+import { isCandidateAiSuggestionEnabled } from "@/features/editor/ai-suggestion-preference";
 
 let editorView: EditorView | null = null;
 
@@ -56,7 +57,10 @@ const createTooltipForSelection = (
         };
 
         dom.appendChild(addToChatButton);
-        dom.appendChild(quickEditButton);
+
+        if (isCandidateAiSuggestionEnabled()) {
+          dom.appendChild(quickEditButton);
+        }
 
         return { dom };
       },

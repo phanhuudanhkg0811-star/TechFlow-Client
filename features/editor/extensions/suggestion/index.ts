@@ -10,6 +10,10 @@ import {
 import { StateEffect, StateField } from "@codemirror/state";
 
 import { fetcher } from "./fetcher";
+import {
+  AI_SUGGESTION_CHANGE_EVENT,
+  isCandidateAiSuggestionEnabled,
+} from "@/features/editor/ai-suggestion-preference";
 
 // StateEffect: A way to send "messages" to update state.
 // We define one effect type for setting the suggestion text.
@@ -56,7 +60,23 @@ let isWaitingForSuggestion = false;
 const DEBOUNCE_DELAY = 5000;
 let currentAbortController: AbortController | null = null;
 
-const generatePayload = (view: EditorView, fileName: string) => {
+const scheduleSuggestionDispatch = (
+  view: EditorView,
+  suggestion: string | null,
+) => {
+  window.setTimeout(() => {
+    if (!view.dom.isConnected) return;
+
+    view.dispatch({ effects: setSuggestionEffect.of(suggestion) });
+  }, 0);
+};
+
+const clearSuggestion = (view: EditorView) => {
+  if (view.state.field(suggestionState, false) === null) return;
+  scheduleSuggestionDispatch(view, null);
+};
+
+const generatePayload = (view: EditorView, fileName: string, testId: string) => {
   const code = view.state.doc.toString();
   if (!code || code.trim().length === 0) return null;
 
@@ -78,6 +98,7 @@ const generatePayload = (view: EditorView, fileName: string) => {
   }
 
   return {
+    testId,
     fileName,
     code,
     currentLine: currentLine.text,
@@ -89,10 +110,31 @@ const generatePayload = (view: EditorView, fileName: string) => {
   }
 }
 
-const createDebouncePlugin = (fileName: string) => {
+const createDebouncePlugin = (fileName: string, testId: string) => {
   return ViewPlugin.fromClass(
     class {
+      private view: EditorView;
+
+      private handleAiSuggestionToggle = () => {
+        if (currentAbortController !== null) {
+          currentAbortController.abort();
+          currentAbortController = null;
+        }
+
+        isWaitingForSuggestion = false;
+        clearSuggestion(this.view);
+        if (debounceTimer !== null) {
+          clearTimeout(debounceTimer);
+          debounceTimer = null;
+        }
+      };
+
       constructor(view: EditorView) {
+        this.view = view;
+        window.addEventListener(
+          AI_SUGGESTION_CHANGE_EVENT,
+          this.handleAiSuggestionToggle,
+        );
         this.triggerSuggestion(view);
       }
 
@@ -103,6 +145,12 @@ const createDebouncePlugin = (fileName: string) => {
       }
 
       triggerSuggestion(view: EditorView) {
+        if (!isCandidateAiSuggestionEnabled()) {
+          isWaitingForSuggestion = false;
+          clearSuggestion(view);
+          return;
+        }
+
         if (debounceTimer !== null) {
           clearTimeout(debounceTimer);
         }
@@ -114,10 +162,10 @@ const createDebouncePlugin = (fileName: string) => {
         isWaitingForSuggestion = true;
 
         debounceTimer = window.setTimeout(async () => {
-          const payload = generatePayload(view, fileName);
+          const payload = generatePayload(view, fileName, testId);
           if (!payload) {
             isWaitingForSuggestion = false;
-            view.dispatch({ effects: setSuggestionEffect.of(null) });
+            clearSuggestion(view);
             return;
           }
           currentAbortController = new AbortController();
@@ -127,13 +175,16 @@ const createDebouncePlugin = (fileName: string) => {
           );
 
           isWaitingForSuggestion = false;
-          view.dispatch({
-            effects: setSuggestionEffect.of(suggestion),
-          });
+          scheduleSuggestionDispatch(view, suggestion);
         }, DEBOUNCE_DELAY);
       }
 
       destroy() {
+        window.removeEventListener(
+          AI_SUGGESTION_CHANGE_EVENT,
+          this.handleAiSuggestionToggle,
+        );
+
         if (debounceTimer !== null) {
           clearTimeout(debounceTimer);
         }
@@ -215,9 +266,9 @@ const acceptSuggestionKeymap = keymap.of([
   },
 ]);
 
-export const suggestion = (fileName: string) => [
+export const suggestion = (fileName: string, testId: string) => [
   suggestionState, // Our state storage
-  createDebouncePlugin(fileName), // Triggers suggestions on typing
+  createDebouncePlugin(fileName, testId), // Triggers suggestions on typing
   renderPlugin, // Renders the ghost text
   acceptSuggestionKeymap, // Tab to accept
 ];

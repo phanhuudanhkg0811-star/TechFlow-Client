@@ -24,6 +24,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import apiClient from "@/lib/apiClient";
+import {
+  isCandidateAiSuggestionEnabled,
+  setCandidateAiSuggestionEnabled,
+} from "@/features/editor/ai-suggestion-preference";
 
 import {
   IconSparkles,
@@ -65,6 +69,8 @@ export const Navbar = ({ testId }: { testId: string }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
   const [hasSubmitted, setHasSubmitted] = useState(false);
+  const [isAiSuggestionEnabled, setIsAiSuggestionEnabledState] =
+    useState(true);
 
   // Refs chỉ dùng trong handler và effect, không dùng trong render
   const isSubmittingRef = useRef(false);
@@ -72,12 +78,27 @@ export const Navbar = ({ testId }: { testId: string }) => {
 
   // Kiểm tra trạng thái đã nộp từ localStorage
   useEffect(() => {
+    queueMicrotask(() => {
+      setIsAiSuggestionEnabledState(isCandidateAiSuggestionEnabled());
+    });
+
     const already = localStorage.getItem(`submitted_${testId}`);
     if (already === "true") {
       hasSubmittedRef.current = true;
       setHasSubmitted(true);
     }
   }, [testId]);
+
+  const toggleAiSuggestion = () => {
+    const nextValue = !isAiSuggestionEnabled;
+    setIsAiSuggestionEnabledState(nextValue);
+    setCandidateAiSuggestionEnabled(nextValue);
+    toast.success(
+      nextValue
+        ? "AI suggestions enabled"
+        : "AI suggestions disabled for this browser",
+    );
+  };
 
   // Lấy thông tin bài test
   useEffect(() => {
@@ -291,6 +312,27 @@ export const Navbar = ({ testId }: { testId: string }) => {
         </div>
 
         <div className="flex items-center gap-4">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant={isAiSuggestionEnabled ? "default" : "outline"}
+                size="sm"
+                className="h-8 gap-1.5"
+                onClick={toggleAiSuggestion}
+              >
+                <IconSparkles size={16} />
+                <span className="hidden sm:inline">
+                  AI {isAiSuggestionEnabled ? "On" : "Off"}
+                </span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              {isAiSuggestionEnabled
+                ? "Turn off ghost suggestions and Quick Edit to save tokens"
+                : "Turn AI suggestions back on"}
+            </TooltipContent>
+          </Tooltip>
+
           <Dialog>
             <DialogTrigger asChild>
               <Button variant="outline" size="sm" className="h-8">

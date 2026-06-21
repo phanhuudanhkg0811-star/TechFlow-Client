@@ -1,35 +1,11 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import * as React from "react";
-import { useState, useEffect } from "react";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { Controller, useForm, SubmitHandler } from "react-hook-form";
-import * as z from "zod";
+import { useEffect, useState } from "react";
+import Link from "next/link";
 import { toast } from "sonner";
-
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import {
-  Field,
-  FieldError,
-  FieldGroup,
-  FieldLabel,
-} from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupTextarea,
-} from "@/components/ui/input-group";
 import {
   Select,
   SelectContent,
@@ -37,570 +13,418 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { Spinner } from "@/components/ui/spinner";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import {
-  IconPlus,
-  IconMail,
   IconBriefcase,
-  IconClock,
+  IconMail,
+  IconPlus,
   IconTrash,
-  IconPencil,
   IconUsers,
 } from "@tabler/icons-react";
-
 import apiClient from "@/lib/apiClient";
-import Link from "next/link";
 import TriggerPipelineButton from "@/features/dashboard-detail/components/trigger-button";
 
-enum DifficultyEnum {
-  INTERN = "Intern",
-  JUNIOR = "Junior",
-  MID_LEVEL = "Mid-level",
-  SENIOR = "Senior",
+type Difficulty = "Intern" | "Junior" | "Mid-level" | "Senior";
+
+interface EmailAccount {
+  id: string;
+  email: string;
+  isActive: boolean;
 }
 
-// Schema validation đồng bộ với Backend
-const jobFormSchema = z.object({
-  title: z.string().min(5, "Tiêu đề chiến dịch phải có ít nhất 5 ký tự"),
-  content: z.string().min(50, "Nội dung JD cần ít nhất 50 ký tự"),
-  hrEmail: z
-    .string()
-    .email("Định dạng email không hợp lệ")
-    .optional()
-    .or(z.literal("")),
-  scenarioTitle: z.string().min(5, "Tiêu đề bài thi quá ngắn"),
-  difficulty: z.nativeEnum(DifficultyEnum, {
-    message: "Độ khó không hợp lệ",
-  }),
-  timeLimit: z.number().int().min(10, "Thời gian làm bài tối thiểu là 10 phút"),
-  scenarioContext: z.string().min(10, "Bối cảnh (Context) không được để trống"),
+interface Template {
+  id: string;
+  name: string;
+  templateType: string;
+  isPublic: boolean;
+}
+
+interface ScenarioForm {
+  id?: string;
+  title: string;
+  difficulty: Difficulty;
+  timeLimit: number;
+  context: string;
+  templateId?: string;
+  isDefault: boolean;
+}
+
+interface Job {
+  id: string;
+  title: string;
+  content?: string;
+  jobReference?: string | null;
+  emailAccountId?: string | null;
+  emailAccount?: { id: string; email: string } | null;
+  scenarios?: ScenarioForm[];
+  _count?: { applications: number };
+}
+
+const blankScenario = (isDefault = false): ScenarioForm => ({
+  title: "",
+  difficulty: "Junior",
+  timeLimit: 90,
+  context: "",
+  isDefault,
 });
 
-type JobFormValues = z.infer<typeof jobFormSchema>;
-
 export default function JobsManagement() {
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [jobs, setJobs] = useState<any[]>([]);
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [emailAccounts, setEmailAccounts] = useState<EmailAccount[]>([]);
+  const [templates, setTemplates] = useState<Template[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [jobToDelete, setJobToDelete] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
-  const form = useForm<JobFormValues>({
-    resolver: zodResolver(jobFormSchema),
-    defaultValues: {
-      title: "",
-      hrEmail: "",
-      content: "",
-      scenarioTitle: "",
-      difficulty: DifficultyEnum.JUNIOR,
-      timeLimit: 90,
-      scenarioContext: "",
-    },
-  });
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
+  const [jobReference, setJobReference] = useState("");
+  const [emailAccountId, setEmailAccountId] = useState("");
+  const [scenarios, setScenarios] = useState<ScenarioForm[]>([
+    blankScenario(true),
+  ]);
 
-  const fetchJobs = async () => {
+  const fetchData = async () => {
+    setIsLoading(true);
     try {
-      setIsLoading(true);
-      const res = await apiClient.get("/dashboard/my-jobs?page=1&limit=50");
-      const dataArray = res.data?.items || [];
-      setJobs(dataArray);
-    } catch (error) {
-      console.error("Lỗi lấy danh sách chiến dịch:", error);
-      toast.error("Không thể tải danh sách chiến dịch.");
-      setJobs([]);
+      const [jobsRes, emailRes, templateRes] = await Promise.all([
+        apiClient.get<Job[]>("/jobs"),
+        apiClient.get<EmailAccount[]>("/email-accounts"),
+        apiClient.get<Template[]>("/templates"),
+      ]);
+      setJobs(jobsRes.data);
+      setEmailAccounts(emailRes.data.filter((account) => account.isActive));
+      setTemplates(templateRes.data);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleOpenCreate = () => {
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const resetForm = () => {
     setEditingId(null);
-    form.reset({
-      title: "",
-      hrEmail: "",
-      content: "",
-      scenarioTitle: "",
-      difficulty: DifficultyEnum.JUNIOR,
-      timeLimit: 90,
-      scenarioContext: "",
-    });
-    setIsDialogOpen(true);
+    setTitle("");
+    setContent("");
+    setJobReference("");
+    setEmailAccountId("");
+    setScenarios([blankScenario(true)]);
   };
 
-  const handleOpenEdit = (job: any) => {
+  const editJob = (job: Job) => {
     setEditingId(job.id);
-    // Giả sử API trả về kèm scenario (nếu có quan hệ 1-1)
-    const scenario = job.scenario || {};
-    form.reset({
-      title: job.title || "",
-      content: job.content || "",
-      hrEmail: job.hrEmail || "",
-      scenarioTitle: scenario.title || "",
-      difficulty: scenario.difficulty || DifficultyEnum.JUNIOR,
-      timeLimit: scenario.timeLimit || 90,
-      scenarioContext: scenario.context || "",
-    });
-    setIsDialogOpen(true);
+    setTitle(job.title || "");
+    setContent(job.content || "");
+    setJobReference(job.jobReference || "");
+    setEmailAccountId(job.emailAccountId || job.emailAccount?.id || "");
+    setScenarios(
+      job.scenarios?.length
+        ? job.scenarios.map((scenario, index) => ({
+            id: scenario.id,
+            title: scenario.title,
+            difficulty: scenario.difficulty,
+            timeLimit: scenario.timeLimit,
+            context: scenario.context,
+            templateId: scenario.templateId,
+            isDefault: scenario.isDefault || index === 0,
+          }))
+        : [blankScenario(true)],
+    );
   };
 
-  const handleSubmitJob: SubmitHandler<JobFormValues> = async (data) => {
+  const updateScenario = (
+    index: number,
+    patch: Partial<ScenarioForm>,
+  ) => {
+    setScenarios((current) =>
+      current.map((scenario, itemIndex) =>
+        itemIndex === index ? { ...scenario, ...patch } : scenario,
+      ),
+    );
+  };
+
+  const setDefaultScenario = (index: number) => {
+    setScenarios((current) =>
+      current.map((scenario, itemIndex) => ({
+        ...scenario,
+        isDefault: itemIndex === index,
+      })),
+    );
+  };
+
+  const removeScenario = (index: number) => {
+    setScenarios((current) => {
+      const next = current.filter((_, itemIndex) => itemIndex !== index);
+      if (!next.some((scenario) => scenario.isDefault) && next[0]) {
+        next[0] = { ...next[0], isDefault: true };
+      }
+      return next.length ? next : [blankScenario(true)];
+    });
+  };
+
+  const submitJob = async () => {
+    const firstScenario = scenarios[0];
+    if (!title.trim() || !content.trim() || !firstScenario) {
+      toast.error("Job title, JD, and at least one test are required");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
+      const normalizedScenarios = scenarios.map((scenario, index) => ({
+        ...scenario,
+        templateId:
+          scenario.templateId && scenario.templateId !== "none"
+            ? scenario.templateId
+            : undefined,
+        isDefault: scenario.isDefault || index === 0,
+      }));
+
       const payload = {
-        ...data,
-        hrEmail: data.hrEmail === "" ? undefined : data.hrEmail,
+        title,
+        content,
+        jobReference: jobReference || undefined,
+        emailAccountId: emailAccountId || undefined,
+        scenarios: normalizedScenarios,
+        scenarioTitle: firstScenario.title,
+        difficulty: firstScenario.difficulty,
+        timeLimit: firstScenario.timeLimit,
+        scenarioContext: firstScenario.context,
       };
 
       if (editingId) {
-        // Gọi API cập nhật (giả sử endpoint là PUT /jobs/:id)
         await apiClient.patch(`/jobs/${editingId}`, payload);
-        toast.success("Cập nhật chiến dịch thành công!");
+        toast.success("Job updated");
       } else {
-        // Tạo mới
         await apiClient.post("/jobs", payload);
-        toast.success("Tạo chiến dịch và bài thi thành công!");
+        toast.success("Job created");
       }
 
-      setIsDialogOpen(false);
-      form.reset();
-      fetchJobs();
-    } catch (error: any) {
-      console.error("Lỗi khi lưu job:", error);
-      if (error.response?.status === 422 && error.response?.data?.details) {
-        const errorDetails = error.response.data.details;
-        errorDetails.forEach((err: any) => {
-          form.setError(err.field as keyof JobFormValues, {
-            type: "server",
-            message: err.message,
-          });
-        });
-        toast.error("Vui lòng kiểm tra lại thông tin nhập vào");
-      } else {
-        toast.error(
-          error.response?.data?.message || "Có lỗi xảy ra khi lưu chiến dịch",
-        );
-      }
+      resetForm();
+      fetchData();
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleDeleteConfirm = async () => {
-    if (!jobToDelete) return;
-    try {
-      await apiClient.delete(`/jobs/${jobToDelete}`);
-      toast.success("Đã xóa chiến dịch");
-      fetchJobs();
-    } catch (error) {
-      toast.error("Không thể xóa chiến dịch này");
-    } finally {
-      setJobToDelete(null);
-    }
+  const deleteJob = async (id: string) => {
+    await apiClient.delete(`/jobs/${id}`);
+    toast.success("Job deleted");
+    fetchData();
   };
 
-  useEffect(() => {
-    fetchJobs();
-  }, []);
-
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
+    <div className="mx-auto max-w-7xl space-y-6">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">
-            Chiến dịch tuyển dụng
-          </h1>
+          <h1 className="text-2xl font-bold">Jobs & Tests</h1>
           <p className="text-muted-foreground">
-            Quản lý vị trí và thiết lập AI Screening.
+            Create jobs, attach an IMAP account, and configure multiple tests.
           </p>
         </div>
-
-        <div className="flex items-center gap-3">
-          {/* Nút Trigger Pipeline mới thêm */}
-          <TriggerPipelineButton />
-
-          <Button onClick={handleOpenCreate} className="gap-2">
-            <IconPlus size={18} /> Tạo Job mới
-          </Button>
-        </div>
+        <TriggerPipelineButton />
       </div>
 
-      {/* Dialog Tạo/Sửa */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto no-scrollbar">
-          <DialogDescription className="hidden">
-            Biểu mẫu {editingId ? "chỉnh sửa" : "tạo"} chiến dịch tuyển dụng
-          </DialogDescription>
-          <DialogHeader>
-            <DialogTitle>
-              {editingId
-                ? "Chỉnh sửa chiến dịch & Bài Test"
-                : "Thông tin vị trí tuyển dụng & Bài Test"}
-            </DialogTitle>
-          </DialogHeader>
+      <Card>
+        <CardHeader>
+          <CardTitle>{editingId ? "Edit Job" : "Create Job"}</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <div className="grid gap-3 md:grid-cols-2">
+            <Input
+              placeholder="Job title"
+              value={title}
+              onChange={(event) => setTitle(event.target.value)}
+            />
+            <Input
+              placeholder="Job reference, e.g. FE-2026"
+              value={jobReference}
+              onChange={(event) => setJobReference(event.target.value)}
+            />
+          </div>
 
-          <form
-            id="job-form"
-            onSubmit={form.handleSubmit(handleSubmitJob)}
-            className="pt-4 space-y-6"
-          >
-            {/* Phần 1: Thông tin chung */}
-            <FieldGroup className="p-4 bg-muted/20 border rounded-lg space-y-4">
-              <h3 className="font-semibold text-primary">1. Thông tin chung</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Controller
-                  name="title"
-                  control={form.control}
-                  render={({ field, fieldState }) => (
-                    <Field data-invalid={fieldState.invalid}>
-                      <FieldLabel htmlFor="job-title">Tên vị trí</FieldLabel>
-                      <Input
-                        {...field}
-                        id="job-title"
-                        aria-invalid={fieldState.invalid}
-                        placeholder="Ví dụ: Senior NestJS Developer"
+          <Select value={emailAccountId} onValueChange={setEmailAccountId}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select CV inbox" />
+            </SelectTrigger>
+            <SelectContent>
+              {emailAccounts.map((account) => (
+                <SelectItem key={account.id} value={account.id}>
+                  {account.email}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Textarea
+            className="min-h-32"
+            placeholder="Paste full job description..."
+            value={content}
+            onChange={(event) => setContent(event.target.value)}
+          />
+
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold">Tests</h3>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setScenarios((current) => [...current, blankScenario()])}
+              >
+                <IconPlus size={16} /> Add Test
+              </Button>
+            </div>
+
+            {scenarios.map((scenario, index) => (
+              <Card key={index} className="border-muted-foreground/20">
+                <CardContent className="space-y-3 p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <label className="flex items-center gap-2 text-sm">
+                      <input
+                        type="radio"
+                        checked={scenario.isDefault}
+                        onChange={() => setDefaultScenario(index)}
                       />
-                      {fieldState.invalid && (
-                        <FieldError errors={[fieldState.error]} />
-                      )}
-                    </Field>
-                  )}
-                />
+                      Default test
+                    </label>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeScenario(index)}
+                    >
+                      <IconTrash size={16} />
+                    </Button>
+                  </div>
 
-                <Controller
-                  name="hrEmail"
-                  control={form.control}
-                  render={({ field, fieldState }) => (
-                    <Field data-invalid={fieldState.invalid}>
-                      <FieldLabel htmlFor="job-email">Email nhận CV</FieldLabel>
-                      <InputGroup>
-                        <InputGroupAddon>
-                          <IconMail
-                            size={16}
-                            className="text-muted-foreground mx-3"
-                          />
-                        </InputGroupAddon>
-                        <Input
-                          {...field}
-                          id="job-email"
-                          aria-invalid={fieldState.invalid}
-                          placeholder="hr-tech@aitech.com"
-                          className="pl-10"
-                        />
-                      </InputGroup>
-                      {fieldState.invalid && (
-                        <FieldError errors={[fieldState.error]} />
-                      )}
-                    </Field>
-                  )}
-                />
-              </div>
+                  <Input
+                    placeholder="Test title"
+                    value={scenario.title}
+                    onChange={(event) =>
+                      updateScenario(index, { title: event.target.value })
+                    }
+                  />
 
-              <Controller
-                name="content"
-                control={form.control}
-                render={({ field, fieldState }) => (
-                  <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel htmlFor="job-content">
-                      Mô tả chi tiết (JD)
-                    </FieldLabel>
-                    <InputGroup>
-                      <InputGroupTextarea
-                        {...field}
-                        id="job-content"
-                        placeholder="Dán nội dung JD vào đây để AI phân tích..."
-                        rows={4}
-                        className="resize-none"
-                      />
-                    </InputGroup>
-                    {fieldState.invalid && (
-                      <FieldError errors={[fieldState.error]} />
-                    )}
-                  </Field>
-                )}
-              />
-            </FieldGroup>
-
-            {/* Phần 2: Thiết lập bài thi */}
-            <FieldGroup className="p-4 bg-primary/5 border border-primary/20 rounded-lg space-y-4">
-              <h3 className="font-semibold text-primary">
-                2. Thiết lập bài thi Web-IDE
-              </h3>
-
-              <Controller
-                name="scenarioTitle"
-                control={form.control}
-                render={({ field, fieldState }) => (
-                  <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel htmlFor="scenario-title">
-                      Tiêu đề bài thi
-                    </FieldLabel>
+                  <div className="grid gap-3 md:grid-cols-3">
+                    <Select
+                      value={scenario.difficulty}
+                      onValueChange={(value) =>
+                        updateScenario(index, { difficulty: value as Difficulty })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Intern">Intern</SelectItem>
+                        <SelectItem value="Junior">Junior</SelectItem>
+                        <SelectItem value="Mid-level">Mid-level</SelectItem>
+                        <SelectItem value="Senior">Senior</SelectItem>
+                      </SelectContent>
+                    </Select>
                     <Input
-                      {...field}
-                      id="scenario-title"
-                      aria-invalid={fieldState.invalid}
-                      placeholder="VD: Xử lý Race Condition trong Database"
+                      type="number"
+                      min={10}
+                      value={scenario.timeLimit}
+                      onChange={(event) =>
+                        updateScenario(index, {
+                          timeLimit: Number(event.target.value),
+                        })
+                      }
                     />
-                    {fieldState.invalid && (
-                      <FieldError errors={[fieldState.error]} />
-                    )}
-                  </Field>
-                )}
-              />
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Controller
-                  name="difficulty"
-                  control={form.control}
-                  render={({ field, fieldState }) => (
-                    <Field data-invalid={fieldState.invalid}>
-                      <FieldLabel>Độ khó</FieldLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        value={field.value}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Chọn độ khó" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value={DifficultyEnum.INTERN}>
-                            Intern
+                    <Select
+                      value={scenario.templateId || "none"}
+                      onValueChange={(value) =>
+                        updateScenario(index, {
+                          templateId: value === "none" ? undefined : value,
+                        })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Template" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">No template</SelectItem>
+                        {templates.map((template) => (
+                          <SelectItem key={template.id} value={template.id}>
+                            {template.name} ({template.templateType})
                           </SelectItem>
-                          <SelectItem value={DifficultyEnum.JUNIOR}>
-                            Junior
-                          </SelectItem>
-                          <SelectItem value={DifficultyEnum.MID_LEVEL}>
-                            Mid-level
-                          </SelectItem>
-                          <SelectItem value={DifficultyEnum.SENIOR}>
-                            Senior
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                      {fieldState.invalid && (
-                        <FieldError errors={[fieldState.error]} />
-                      )}
-                    </Field>
-                  )}
-                />
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-                <Controller
-                  name="timeLimit"
-                  control={form.control}
-                  render={({ field, fieldState }) => (
-                    <Field data-invalid={fieldState.invalid}>
-                      <FieldLabel htmlFor="time-limit">
-                        Thời gian làm bài (Phút)
-                      </FieldLabel>
-                      <InputGroup>
-                        <InputGroupAddon>
-                          <IconClock
-                            size={16}
-                            className="text-muted-foreground mx-3"
-                          />
-                        </InputGroupAddon>
-                        <Input
-                          {...field}
-                          type="number"
-                          id="time-limit"
-                          aria-invalid={fieldState.invalid}
-                          className="pl-10"
-                          onChange={(e) =>
-                            field.onChange(Number(e.target.value))
-                          }
-                        />
-                      </InputGroup>
-                      {fieldState.invalid && (
-                        <FieldError errors={[fieldState.error]} />
-                      )}
-                    </Field>
-                  )}
-                />
-              </div>
+                  <Textarea
+                    className="min-h-28"
+                    placeholder="Test context and requirements..."
+                    value={scenario.context}
+                    onChange={(event) =>
+                      updateScenario(index, { context: event.target.value })
+                    }
+                  />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
 
-              <Controller
-                name="scenarioContext"
-                control={form.control}
-                render={({ field, fieldState }) => (
-                  <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel htmlFor="scenario-context">
-                      Bối cảnh đề thi (Markdown)
-                    </FieldLabel>
-                    <InputGroup>
-                      <InputGroupTextarea
-                        {...field}
-                        id="scenario-context"
-                        placeholder="Mô tả yêu cầu kỹ thuật ứng viên cần giải quyết..."
-                        rows={4}
-                        className="resize-none font-mono text-sm"
-                      />
-                    </InputGroup>
-                    {fieldState.invalid && (
-                      <FieldError errors={[fieldState.error]} />
-                    )}
-                  </Field>
-                )}
-              />
-            </FieldGroup>
-          </form>
-
-          <div className="flex justify-end gap-3 pt-4 border-t mt-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                form.reset();
-                setIsDialogOpen(false);
-              }}
-              disabled={isSubmitting}
-            >
-              Hủy bỏ
-            </Button>
-            <Button type="submit" form="job-form" disabled={isSubmitting}>
-              {isSubmitting ? (
-                <>
-                  <Spinner className="mr-2 size-4" /> Đang xử lý...
-                </>
-              ) : editingId ? (
-                "Cập nhật"
-              ) : (
-                "Kích hoạt chiến dịch"
-              )}
+          <div className="flex justify-end gap-2">
+            {editingId && (
+              <Button variant="outline" onClick={resetForm}>
+                Cancel
+              </Button>
+            )}
+            <Button onClick={submitJob} disabled={isSubmitting}>
+              {isSubmitting ? <Spinner className="mr-2 size-4" /> : null}
+              {editingId ? "Update Job" : "Create Job"}
             </Button>
           </div>
-        </DialogContent>
-      </Dialog>
+        </CardContent>
+      </Card>
 
-      {/* Danh sách Job */}
       {isLoading ? (
-        <div className="flex justify-center items-center h-40">
-          <Spinner className="size-8 text-primary" />
-        </div>
-      ) : jobs.length === 0 ? (
-        <div className="text-center p-12 border border-dashed rounded-xl bg-muted/10 text-muted-foreground">
-          Chưa có chiến dịch tuyển dụng nào.
+        <div className="flex h-40 items-center justify-center">
+          <Spinner className="size-8" />
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {jobs.map((job) => (
-            <Card
-              key={job.id}
-              className="group relative hover:shadow-md transition-shadow border-border/50"
-            >
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <IconBriefcase className="text-primary" size={24} />
-                <Badge variant="secondary">
-                  {job._count?.applications || 0} hồ sơ
-                </Badge>
-              </CardHeader>
-              <CardContent className="pt-4 space-y-4">
-                <CardTitle className="text-xl line-clamp-1">
-                  {job.title}
-                </CardTitle>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/30 p-2 rounded-md">
-                  <IconMail size={16} className="shrink-0" />
-                  <span className="truncate">
-                    {job.hrEmail || "Chưa thiết lập"}
+            <Card key={job.id}>
+              <CardHeader>
+                <CardTitle className="flex items-start justify-between gap-3 text-lg">
+                  <span>{job.title}</span>
+                  <span className="rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground">
+                    {job._count?.applications ?? 0} candidates
                   </span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <IconMail size={16} />
+                  {job.emailAccount?.email || "No inbox selected"}
                 </div>
-
-                {/* Action Buttons */}
-                <div className="flex gap-2 pt-2">
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="flex-1 gap-1"
-                          onClick={() => handleOpenEdit(job)}
-                        >
-                          <IconPencil size={16} />
-                          Sửa
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>Chỉnh sửa chiến dịch</TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="flex-1 gap-1"
-                          asChild // Thêm asChild
-                        >
-                          <Link href={`/dashboard/jobs/${job.id}/candidates`}>
-                            {" "}
-                            {/* Sửa thành Link */}
-                            <IconUsers size={16} />
-                            Ứng viên
-                          </Link>
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>Xem danh sách ứng viên</TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-
-                  <AlertDialog>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <AlertDialogTrigger asChild>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="text-destructive hover:bg-destructive/10 border-destructive/30"
-                              onClick={() => setJobToDelete(job.id)}
-                            >
-                              <IconTrash size={16} />
-                            </Button>
-                          </AlertDialogTrigger>
-                        </TooltipTrigger>
-                        <TooltipContent>Xóa chiến dịch</TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>
-                          Xác nhận xóa chiến dịch?
-                        </AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Hành động này không thể hoàn tác. Toàn bộ dữ liệu ứng
-                          viên và bài test liên quan sẽ bị xóa vĩnh viễn.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Hủy</AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={handleDeleteConfirm}
-                          className="bg-destructive hover:bg-destructive/90"
-                        >
-                          Xóa vĩnh viễn
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <IconBriefcase size={16} />
+                  {job.scenarios?.length ?? 0} test(s)
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button size="sm" variant="outline" onClick={() => editJob(job)}>
+                    Edit
+                  </Button>
+                  <Button size="sm" variant="outline" asChild>
+                    <Link href={`/dashboard/jobs/${job.id}/candidates`}>
+                      <IconUsers size={16} /> Candidates
+                    </Link>
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => deleteJob(job.id)}
+                  >
+                    Delete
+                  </Button>
                 </div>
               </CardContent>
             </Card>

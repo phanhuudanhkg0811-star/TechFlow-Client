@@ -1,8 +1,10 @@
 import { z } from "zod";
+import { isCandidateAiSuggestionEnabled } from "@/features/editor/ai-suggestion-preference";
 import { toast } from "sonner";
 import apiClient from "@/lib/apiClient";
 
 const editRequestSchema = z.object({
+  testId: z.string(),
   selectedCode: z.string(),
   fullCode: z.string(),
   instruction: z.string(),
@@ -14,6 +16,11 @@ export const fetcher = async (
   payload: EditRequest,
   signal: AbortSignal,
 ): Promise<string | null> => {
+  if (!isCandidateAiSuggestionEnabled()) {
+    toast.info("AI suggestions are turned off for this browser.");
+    return null;
+  }
+
   try {
     const validatedPayload = editRequestSchema.parse(payload);
 

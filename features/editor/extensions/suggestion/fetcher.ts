@@ -1,7 +1,9 @@
 import { z } from "zod";
+import { isCandidateAiSuggestionEnabled } from "@/features/editor/ai-suggestion-preference";
 import apiClient from "@/lib/apiClient"; // Dùng apiClient của bạn
 
 const suggestionRequestSchema = z.object({
+  testId: z.string(),
   fileName: z.string(),
   code: z.string(),
   currentLine: z.string(),
@@ -18,6 +20,8 @@ export const fetcher = async (
   payload: SuggestionRequest,
   signal: AbortSignal,
 ): Promise<string | null> => {
+  if (!isCandidateAiSuggestionEnabled()) return null;
+
   try {
     const validatedPayload = suggestionRequestSchema.parse(payload);
 
