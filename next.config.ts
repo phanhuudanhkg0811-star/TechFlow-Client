@@ -2,6 +2,18 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   /* config options here */
+  async rewrites() {
+    const apiProxyUrl = process.env.API_PROXY_URL;
+
+    if (!apiProxyUrl) return [];
+
+    return [
+      {
+        source: "/api/:path*",
+        destination: `${apiProxyUrl}/:path*`,
+      },
+    ];
+  },
   async headers() {
     return [
       {
